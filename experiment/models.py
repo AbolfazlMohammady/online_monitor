@@ -326,7 +326,7 @@ class QualityCommission(models.Model):
     
     project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name="پروژه")
     layer = models.CharField(max_length=20, choices=LAYER_CHOICES, verbose_name="لایه")
-    coefficient = models.DecimalField(max_digits=6, decimal_places=2, verbose_name="کمیسیون کیفیت")
+    coefficient = models.DecimalField(max_digits=6, decimal_places=2, verbose_name="ضریب کیفیت")
     start_kilometer = models.DecimalField(max_digits=20, decimal_places=3, verbose_name="کیلومتر شروع")
     end_kilometer = models.DecimalField(max_digits=20, decimal_places=3, verbose_name="کیلومتر پایان")
     calculation_date = jmodels.jDateField(verbose_name="تاریخ محاسبه")

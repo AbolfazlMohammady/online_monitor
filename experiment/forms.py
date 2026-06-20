@@ -370,7 +370,7 @@ class QualityCommissionForm(forms.ModelForm):
         coefficient = self.cleaned_data.get('coefficient')
         if coefficient is not None:
             if coefficient < 0 or coefficient > 100:
-                raise forms.ValidationError('کمیسیون کیفیت باید بین 0 تا 100 درصد باشد.')
+                raise forms.ValidationError('ضریب کیفیت باید بین 0 تا 100 درصد باشد.')
         return coefficient
 
 class ExperimentTypeForm(forms.ModelForm):
