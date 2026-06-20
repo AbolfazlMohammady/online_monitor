@@ -269,8 +269,13 @@ class ExperimentApprovalForm(forms.ModelForm):
                 self.fields['role'].initial = self.user_roles[0]
             else:
                 # اگر چند نقش دارد، باید انتخاب کند
-                self.fields['role'].widget = forms.Select(attrs={'class': 'form-select'})
-                self.fields['role'].choices = [(role, role) for role in self.user_roles]
+                # Replace the role field with a ChoiceField so HTML <select> options are rendered
+                choices = [('', '--- انتخاب نقش ---')] + [(role, role) for role in self.user_roles]
+                self.fields['role'] = forms.ChoiceField(
+                    choices=choices,
+                    required=True,
+                    widget=forms.Select(attrs={'class': 'form-select'})
+                )
         self.fields['status'].widget.attrs.update({'class': 'form-select'})
         self.fields['description'].widget.attrs.update({'class': 'form-control', 'rows': 3})
         self.fields['penalty_percentage'].widget.attrs.update({'class': 'form-control'})

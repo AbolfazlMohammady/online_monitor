@@ -29,7 +29,9 @@
                     <form method="post">
                         {% csrf_token %}
                         {{ form.experiment_response }}
-                        {% if form.role %}{{ form.role }}{% endif %}
+                        {% if form.role.is_hidden %}
+                            {{ form.role }}
+                        {% endif %}
                         
                         {% if user_roles|length > 1 %}
                         <div class="row mb-3">
