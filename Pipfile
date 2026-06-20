@@ -1,0 +1,34 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+asgiref = "==3.8.1"
+django-appconf = "==1.1.0"
+et-xmlfile = "==2.0.0"
+jalali-core = "==1.0.0"
+jdatetime = "==5.2.0"
+numpy = "==2.3.0"
+python-dateutil = "==2.9.0.post0"
+pytz = "==2025.2"
+six = "==1.17.0"
+sqlparse = "==0.5.3"
+tzdata = "==2025.2"
+xlrd = "*"
+django = "==5.0.6"
+django-jalali = "==7.4.0"
+django-select2 = "==8.4.0"
+python-dotenv = "*"
+pandas = "*"
+openpyxl = "*"
+django-grappelli = "*"
+django-widget-tweaks = "*"
+django-jalali-date = "*"
+django-crispy-forms = "*"
+crispy-bootstrap5 = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"
