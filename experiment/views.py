@@ -819,8 +819,8 @@ def payment_coefficient_list(request):
         if layer and coefficients:
             coefficients = coefficients.filter(layer=layer)
         
-        # مرتب‌سازی بر اساس تاریخ ایجاد (جدیدترین اول)
-        coefficients = coefficients.order_by('-created_at')
+        # مرتب‌سازی بر اساس تاریخ محاسبه (جدیدترین اول)
+        coefficients = coefficients.order_by('-calculation_date', '-created_at')
         
         # محاسبه آمار ضرایب (قبل از pagination)
         total_coefficients = coefficients.count()
@@ -904,8 +904,8 @@ def quality_commission_list(request):
         commissions = commissions.filter(project_id=project_id)
     if layer:
         commissions = commissions.filter(layer=layer)
-    
-    commissions = commissions.order_by('-created_at')
+
+    commissions = commissions.order_by('-calculation_date', '-created_at')
     total_commissions = commissions.count()
     paginator = Paginator(commissions, 20)
     page_number = request.GET.get('page', 1)
