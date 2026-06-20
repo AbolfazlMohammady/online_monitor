@@ -1,0 +1,1204 @@
+/* ============================================
+   ریدیزاین حرفه‌ای داشبورد پروژه
+   ============================================ */
+
+/* Reset و Base Styles */
+html, body {
+  min-height: 100vh;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+  width: 100%;
+  height: auto;
+  font-family: 'Vazir', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* ============================================
+   Wrapper اصلی
+   ============================================ */
+.dashboard-wrapper {
+  padding: 2rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  min-height: 100vh;
+}
+
+/* ============================================
+   هدر پروژه - طراحی مدرن
+   ============================================ */
+.dashboard-header-modern {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 1.5rem;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 40px rgba(102, 126, 234, 0.25);
+  color: #fff;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.project-title-section {
+  flex: 1;
+}
+
+.project-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  letter-spacing: -0.5px;
+}
+
+.project-subtitle {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0.5rem 0 0 0;
+  font-weight: 400;
+}
+
+.btn-modern {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary-modern {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  color: #1a1a1a;
+}
+
+.btn-primary-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(67, 233, 123, 0.4);
+  color: #1a1a1a;
+}
+
+/* ============================================
+   کارت‌های اطلاعات پروژه
+   ============================================ */
+.project-info-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.info-card-modern {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.info-card-modern:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.info-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.bg-gradient-blue {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.bg-gradient-green {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.bg-gradient-orange {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.bg-gradient-purple {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
+.info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.info-label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.info-value small {
+  font-size: 0.7rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+/* ============================================
+   کنترل‌های نمودار
+   ============================================ */
+.chart-controls-modern {
+  background: #fff;
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e8ecf1;
+}
+
+.controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f0f4f8;
+}
+
+.controls-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.zoom-controls-modern {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-icon-modern {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.625rem;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.1rem;
+}
+
+.btn-icon-modern:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.controls-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.coordinates-section {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.coordinate-input-modern {
+  flex: 1;
+  min-width: 180px;
+}
+
+.coordinate-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.coordinate-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.625rem;
+  font-size: 0.95rem;
+  background: #f8fafc;
+  color: #1e293b;
+  transition: all 0.2s ease;
+  font-weight: 600;
+}
+
+.coordinate-field:focus {
+  outline: none;
+  border-color: #667eea;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.zoom-buttons-section {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.zoom-buttons-group {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  max-width: 320px;
+}
+
+.toggle-buttons-section {
+  width: 100%;
+}
+
+.toggle-buttons-group {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btn-toggle-modern {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.875rem 1.25rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-toggle-modern:hover {
+  border-color: #667eea;
+  color: #667eea;
+  background: #f8faff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.btn-toggle-modern.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.btn-toggle-modern i {
+  font-size: 1.1rem;
+}
+
+/* ============================================
+   دکمه‌های زوم - استایل جمع‌وجور و زیبا
+   ============================================ */
+.zoom-buttons-group {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.zoom-axis-group {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+  padding: 0.375rem 0.625rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 0.625rem;
+  border: 1.5px solid #e2e8f0;
+  transition: all 0.25s ease;
+}
+
+.zoom-axis-group:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.zoom-axis-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  margin-left: 0.25rem;
+  min-width: 45px;
+  text-align: right;
+  letter-spacing: 0.2px;
+}
+
+.zoom-axis-label.y-axis {
+  color: #667eea;
+}
+
+.zoom-axis-label.x-axis {
+  color: #f59e0b;
+}
+
+.zoom-btn {
+  padding: 0.4rem 0.75rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.zoom-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(102, 126, 234, 0.08);
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+}
+
+.zoom-btn:hover::before {
+  width: 150px;
+  height: 150px;
+}
+
+.zoom-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+  background: #f8faff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.zoom-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(102, 126, 234, 0.1);
+}
+
+.zoom-btn i {
+  font-size: 0.875rem;
+  position: relative;
+  z-index: 1;
+}
+
+.zoom-btn span {
+  position: relative;
+  z-index: 1;
+  font-size: 0.75rem;
+}
+
+.zoom-btn.zoom-in {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #86efac;
+  color: #16a34a;
+}
+
+.zoom-btn.zoom-in:hover {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border-color: #4ade80;
+  color: #15803d;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
+}
+
+.zoom-btn.zoom-out {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.zoom-btn.zoom-out:hover {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border-color: #f87171;
+  color: #b91c1c;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+
+/* ============================================
+   فیلتر زمانی
+   ============================================ */
+.date-filter-modern {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+}
+
+.filter-header {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.filter-body {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.date-input-group {
+  flex: 1;
+  min-width: 180px;
+}
+
+.date-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+}
+
+.date-input-modern {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.625rem;
+  font-size: 0.9rem;
+  background: #fff;
+  color: #1e293b;
+  transition: all 0.2s ease;
+}
+
+.date-input-modern:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn-filter-modern {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.625rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.btn-apply {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-apply:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-clear {
+  background: #fff;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+}
+
+.btn-clear:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+}
+
+/* ============================================
+   نمودار اصلی - ریدیزاین حرفه‌ای
+   ============================================ */
+.chart-container-modern {
+  background: #fff;
+  border-radius: 1.25rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e8ecf1;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.chart-container-modern:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+.chart-header-modern {
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 2px solid #e8ecf1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chart-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  letter-spacing: -0.3px;
+}
+
+.chart-body-modern {
+  padding: 0;
+  background: linear-gradient(135deg, #fafbfc 0%, #ffffff 100%);
+  position: relative;
+  overflow: hidden; /* جلوگیری از overflow در این سطح */
+}
+
+/* ============================================
+   Wrapper نمودار
+   ============================================ */
+.chart-wrapper-modern {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  background: #fff;
+  min-height: 520px;
+  height: 520px; /* ارتفاع ثابت */
+  direction: ltr;
+  overflow: hidden; /* جلوگیری از overflow در این سطح */
+}
+
+.y-axis-wrapper {
+  flex: 0 0 50px;
+  background: #fff;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  border-right: 2px solid #e8ecf1;
+  /* اطمینان از اینکه اسکرول روی Y-axis نمی‌افتد */
+  position: sticky;
+  left: 0;
+  flex-shrink: 0;
+}
+
+.y-axis-canvas {
+  width: 50px;
+  height: 470px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  pointer-events: none;
+  /* اطمینان از اینکه canvas درست نمایش داده می‌شود */
+  display: block;
+}
+
+.chart-main-wrapper {
+  flex: 1 1 auto;
+  overflow: hidden; /* اسکرول در chart-scroll-container انجام می‌شود */
+  min-width: 0; /* اجازه فشرده شدن برای flex */
+  position: relative;
+  background: #fff;
+  direction: ltr; /* جهت از چپ به راست */
+}
+
+.chart-scroll-container {
+  overflow-x: auto !important;
+  overflow-y: auto !important; /* اسکرول افقی و عمودی */
+  width: 100%;
+  height: 520px; /* ارتفاع ثابت */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+  direction: ltr; /* جهت اسکرول از چپ به راست */
+  text-align: left; /* تراز به سمت چپ */
+  scroll-behavior: smooth; /* اسکرول نرم */
+  -webkit-overflow-scrolling: touch; /* اسکرول نرم در موبایل */
+  /* اطمینان از اسکرول کامل */
+  position: relative;
+  /* اطمینان از اینکه اسکرول روی محتوا می‌افتد نه روی Y-axis */
+  margin-left: 0;
+  /* اطمینان از اینکه container فشرده نمی‌شود */
+  min-height: 520px;
+  max-height: 520px;
+  /* اطمینان از اینکه اسکرول کار می‌کند */
+  display: block;
+}
+
+.chart-scroll-container::-webkit-scrollbar {
+  height: 8px; /* اسکرول افقی */
+  width: 8px; /* اسکرول عمودی */
+}
+
+.chart-scroll-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.chart-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.chart-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.chart-inner-container {
+  position: relative;
+  display: block; /* تغییر از flex به block */
+  text-align: left; /* تراز به سمت چپ */
+  direction: ltr; /* جهت از چپ به راست */
+  overflow: visible; /* اجازه اسکرول */
+  min-width: 1200px; /* حداقل عرض */
+  /* عرض به صورت داینامیک تنظیم می‌شود - نباید 100% باشد */
+  /* اطمینان از اینکه container فشرده نمی‌شود */
+  box-sizing: border-box;
+  /* عرض باید دقیقاً برابر با dynamicWidth باشد که در JS تنظیم می‌شود */
+}
+
+/* ============================================
+   Legend - ریدیزاین شده
+   ============================================ */
+.chart-legend-modern {
+  position: absolute;
+  top: 4px;
+  left: 4px; /* گوشه چپ بالا */
+  background: rgba(255, 255, 255, 0.6); /* شفاف‌تر */
+  backdrop-filter: blur(6px);
+  border-radius: 0.25rem; /* گوشه مربع */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); /* سایه کمتر */
+  border: 1px solid rgba(226, 232, 240, 0.4); /* حاشیه نازک‌تر */
+  padding: 0.4rem 0.5rem; /* padding کمتر */
+  font-size: 0.6rem; /* فونت کوچک‌تر */
+  z-index: 100;
+  width: 120px; /* عرض ثابت - مربع */
+  max-height: 200px; /* حداکثر ارتفاع */
+  overflow-y: auto; /* اسکرول عمودی اگر لازم باشد */
+  transition: all 0.3s ease;
+  opacity: 0.75; /* شفاف‌تر */
+}
+
+.chart-legend-modern:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  opacity: 1; /* در hover شفافیت کامل */
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.legend-header {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #f0f4f8;
+  font-size: 0.75rem; /* کوچک‌تر */
+}
+
+.legend-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem; /* فاصله کمتر */
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* فاصله کمتر */
+  padding: 0.2rem 0; /* padding کمتر */
+  transition: all 0.2s ease;
+}
+
+.legend-item:hover {
+  transform: translateX(4px);
+}
+
+.legend-icon {
+  width: 24px; /* کوچک‌تر */
+  height: 16px; /* کوچک‌تر */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 0.2rem;
+  background: rgba(248, 250, 252, 0.8);
+  padding: 1px;
+}
+
+.legend-icon-layer-fixed {
+  background: rgba(31, 41, 55, 0.16);
+}
+
+.legend-icon-layer-variable {
+  background: rgba(251, 146, 60, 0.18);
+}
+
+.legend-icon-exp-pending {
+  background: rgba(226, 232, 240, 0.6);
+}
+
+.legend-icon-exp-progress {
+  background: rgba(249, 115, 22, 0.18);
+}
+
+.legend-icon-exp-approved {
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.legend-icon-exp-rejected {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.legend-icon-natural {
+  background: rgba(33, 150, 243, 0.1);
+}
+
+.legend-text {
+  font-size: 0.65rem; /* کوچک‌تر */
+  font-weight: 400; /* وزن کمتر */
+  color: #475569;
+  flex: 1;
+}
+
+/* ============================================
+   Canvas های نمودار
+   ============================================ */
+.main-canvas-modern {
+  min-width: 0;
+  height: 470px;
+  background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+  cursor: crosshair;
+  display: block;
+  border-bottom: 1px solid #e8ecf1;
+  /* اطمینان از اینکه canvas فشرده نمی‌شود */
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.x-axis-canvas-modern {
+  min-width: 0;
+  height: 50px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  pointer-events: none;
+  display: block;
+  border-top: 2px solid #e8ecf1;
+  /* اطمینان از اینکه canvas فشرده نمی‌شود */
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   بخش لایه‌ها
+   ============================================ */
+.layers-section-modern {
+  background: #fff;
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e8ecf1;
+}
+
+.layers-header-modern {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f0f4f8;
+}
+
+.layers-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.layers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.layer-card-modern {
+  background: linear-gradient(135deg, #fff 0%, #f8fafc 100%);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  border: 2px solid #e2e8f0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.layer-card-modern:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: #cbd5e1;
+}
+
+.layer-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.layer-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.layer-info {
+  flex: 1;
+}
+
+.layer-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.25rem 0;
+}
+
+.layer-details {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.layer-card-body {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.layer-badge-modern {
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid;
+  transition: all 0.2s ease;
+}
+
+.layer-badge-info {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+.layer-badge-muted {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5f5;
+}
+
+/* ============================================
+   تولتیپ
+   ============================================ */
+.tooltip-custom {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  color: #1e293b;
+  padding: 1rem 1.25rem;
+  border-radius: 0.875rem;
+  font-size: 0.9rem;
+  z-index: 2000;
+  pointer-events: none;
+  max-width: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  transition: opacity 0.2s ease;
+  display: none;
+  line-height: 1.6;
+}
+
+.tooltip-custom::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -8px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 8px solid rgba(255, 255, 255, 0.98);
+}
+
+/* ============================================
+   Canvas Styles
+   ============================================ */
+#dashboard-container {
+  position: relative;
+  min-height: 500px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+#mainCanvas {
+  background-color: #fafafa;
+  margin: 0px;
+  max-width: 100%;
+  box-sizing: border-box;
+  cursor: crosshair;
+}
+
+#yAxisCanvas {
+  background-color: #ffffff;
+  border-right: 1px solid #e0e0e0;
+}
+
+#xAxisCanvas {
+  background-color: #ffffff;
+  border-top: 1px solid #e0e0e0;
+}
+
+canvas {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* ============================================
+   Responsive Design
+   ============================================ */
+@media (max-width: 1200px) {
+  .project-info-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .layers-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-wrapper {
+    padding: 1rem;
+  }
+  
+  .dashboard-header-modern {
+    padding: 1.5rem;
+  }
+  
+  .project-title {
+    font-size: 1.5rem;
+  }
+  
+  .project-info-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .controls-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .toggle-buttons-group {
+    flex-direction: column;
+  }
+  
+  .btn-toggle-modern {
+    width: 100%;
+  }
+  
+  .filter-body {
+    flex-direction: column;
+  }
+  
+  .date-input-group,
+  .btn-filter-modern {
+    width: 100%;
+  }
+  
+  .layers-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .chart-controls-modern {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboard-wrapper {
+    padding: 0.75rem;
+  }
+  
+  .dashboard-header-modern {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+  
+  .project-title {
+    font-size: 1.25rem;
+  }
+  
+  .info-card-modern {
+    padding: 1rem;
+  }
+  
+  .info-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 1.25rem;
+  }
+  
+  .info-value {
+    font-size: 1.25rem;
+  }
+  
+  .chart-controls-modern {
+    padding: 0.75rem;
+    border-radius: 1rem;
+  }
+  
+  .chart-container-modern {
+    border-radius: 1rem;
+  }
+  
+  .layers-section-modern {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+}
+
+/* ============================================
+   انیمیشن‌ها
+   ============================================ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slide-in {
+  animation: slideIn 0.4s ease-out;
+}
+
+/* ============================================
+   استایل‌های اضافی
+   ============================================ */
+.card {
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e8ecf1;
+}
+
+.card-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 2px solid #e8ecf1;
+  border-radius: 1.25rem 1.25rem 0 0 !important;
+  padding: 1.25rem 1.5rem;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* ============================================
+   Dark Mode Support (اختیاری)
+   ============================================ */
+@media (prefers-color-scheme: dark) {
+  .dashboard-wrapper {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  }
+  
+  .chart-controls-modern,
+  .chart-container-modern,
+  .layers-section-modern {
+    background: #2d3748;
+    border-color: #4a5568;
+  }
+  
+  .tooltip-custom {
+    background: rgba(45, 55, 72, 0.98);
+    color: #f7fafc;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
