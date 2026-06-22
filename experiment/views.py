@@ -948,6 +948,123 @@ def quality_commission_delete(request, pk):
     })
 
 @login_required
+def meeting_minutes_create(request):
+    """ایجاد صورت جلسه جدید"""
+    if request.method == 'POST':
+        form = forms.MeetingMinutesForm(request.POST, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'صورت جلسه با موفقیت ثبت شد.')
+            return redirect('experiment:meeting_minutes_list')
+    else:
+        form = forms.MeetingMinutesForm(user=request.user)
+    
+    return render(request, 'experiment/meeting_minutes_form.html', {'form': form})
+
+@login_required
+def meeting_minutes_list(request):
+    """نمایش لیست صورت جلسات"""
+    user = request.user
+    
+    # فیلتر بر اساس دسترسی کاربر
+    from project.models import Project
+    if user.is_superuser:
+        minutes = models.MeetingMinutes.objects.all()
+        projects = Project.objects.filter(parent_project__isnull=True).order_by('name')
+    else:
+        minutes = models.MeetingMinutes.objects.filter(project__in=user.accessible_projects.all())
+        projects = user.accessible_projects.all()
+    
+    # فیلتر بر اساس پروژه
+    project_id = request.GET.get('project', '').strip()
+    if project_id:
+        try:
+            project_id_int = int(project_id)
+            if not user.is_superuser:
+                if not user.accessible_projects.filter(id=project_id_int).exists():
+                    messages.error(request, 'شما به این پروژه دسترسی ندارید.')
+                    project_id_int = None
+            if project_id_int:
+                minutes = minutes.filter(project_id=project_id_int)
+        except (ValueError, TypeError):
+            pass
+    
+    # فیلتر بر اساس تاریخ
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+    
+    if date_from:
+        try:
+            from jalali_date import to_gregorian
+            # تبدیل تاریخ جلالی به میلادی
+            from django.utils.dateparse import parse_date
+            # فرض کنید تاریخ به صورت YYYY/MM/DD ارسال شده است
+            parts = date_from.split('/')
+            if len(parts) == 3:
+                g_date = to_gregorian(int(parts[0]), int(parts[1]), int(parts[2]))
+                minutes = minutes.filter(minutes_date__gte=g_date)
+        except Exception:
+            pass
+    
+    if date_to:
+        try:
+            from jalali_date import to_gregorian
+            parts = date_to.split('/')
+            if len(parts) == 3:
+                g_date = to_gregorian(int(parts[0]), int(parts[1]), int(parts[2]))
+                minutes = minutes.filter(minutes_date__lte=g_date)
+        except Exception:
+            pass
+    
+    # مرتب‌سازی بر اساس تاریخ نزولی
+    minutes = minutes.order_by('-minutes_date', '-created_at')
+    
+    total_minutes = minutes.count()
+    
+    # صفحه‌بندی (10 مورد در هر صفحه)
+    paginator = Paginator(minutes, 10)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'experiment/meeting_minutes_list.html', {
+        'minutes': page_obj,
+        'page_obj': page_obj,
+        'projects': projects,
+        'selected_project': project_id,
+        'date_from': date_from,
+        'date_to': date_to,
+        'total_minutes': total_minutes,
+    })
+
+@login_required
+def meeting_minutes_update(request, pk):
+    """ویرایش صورت جلسه"""
+    minutes = get_object_or_404(models.MeetingMinutes, pk=pk)
+    if request.method == 'POST':
+        form = forms.MeetingMinutesForm(request.POST, instance=minutes, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'صورت جلسه با موفقیت بروزرسانی شد.')
+            return redirect('experiment:meeting_minutes_list')
+    else:
+        form = forms.MeetingMinutesForm(instance=minutes, user=request.user)
+    
+    return render(request, 'experiment/meeting_minutes_form.html', {'form': form})
+
+@login_required
+def meeting_minutes_delete(request, pk):
+    """حذف صورت جلسه"""
+    minutes = get_object_or_404(models.MeetingMinutes, pk=pk)
+    if request.method == 'POST':
+        minutes.delete()
+        messages.success(request, 'صورت جلسه با موفقیت حذف شد.')
+        return redirect('experiment:meeting_minutes_list')
+    
+    return render(request, 'experiment/meeting_minutes_confirm_delete.html', {
+        'minutes': minutes
+    })
+
+@login_required
 def update_experiment_kilometers(request):
     """به‌روزرسانی کیلومتراژ آزمایشات به محدوده پروژه"""
     if not request.user.is_superuser:

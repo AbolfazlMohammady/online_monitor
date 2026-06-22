@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}لیست صورت جلسات{% endblock %}
+
+{% block head %}
+  <link href="{% static 'css/persian-datepicker.min.css' %}" rel="stylesheet" />
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid py-5">
+  <div class="page-toolbar">
+    <button type="button" class="btn btn-outline-secondary rounded-pill page-back-btn" onclick="history.back()">
+      <i class="bi bi-arrow-right me-2"></i>بازگشت
+    </button>
+    <div class="page-toolbar-actions">
+      <a href="{% url 'experiment:meeting_minutes_create' %}" class="btn btn-primary rounded-pill px-4">
+        <i class="bi bi-plus me-2"></i>افزودن صورت جلسه جدید
+      </a>
+    </div>
+  </div>
+
+  <!-- فیلترها -->
+  <div class="card border-0 shadow-lg rounded-4 overflow-hidden mb-4">
+    <div class="card-header bg-gradient text-white">
+      <h6 class="mb-0">
+        <i class="bi bi-funnel me-2"></i>فیلترها
+      </h6>
+    </div>
+    <div class="card-body p-3">
+      <form method="get" class="row g-3">
+        <div class="col-md-3">
+          <label for="project" class="form-label fw-bold">پروژه</label>
+          <select name="project" id="project" class="form-select">
+            <option value="">-- انتخاب پروژه --</option>
+            {% for project in projects %}
+              <option value="{{ project.id }}" {% if project.id|stringformat:"s" == selected_project %}selected{% endif %}>
+                {{ project.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="col-md-3">
+          <label for="date_from" class="form-label fw-bold">از تاریخ</label>
+          <input type="text" id="date_from" name="date_from" class="jalali_date-input form-control" 
+                 value="{{ date_from }}" placeholder="YYYY/MM/DD">
+        </div>
+        
+        <div class="col-md-3">
+          <label for="date_to" class="form-label fw-bold">تا تاریخ</label>
+          <input type="text" id="date_to" name="date_to" class="jalali_date-input form-control" 
+                 value="{{ date_to }}" placeholder="YYYY/MM/DD">
+        </div>
+        
+        <div class="col-md-3 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-search me-2"></i>جستجو
+          </button>
+          <a href="{% url 'experiment:meeting_minutes_list' %}" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-x me-2"></i>پاک‌کردن
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- آماری -->
+  <div class="alert alert-info rounded-4" role="alert">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>تعداد کل:</strong> {{ total_minutes }} صورت جلسه
+    {% if page_obj.number > 1 %}
+      | <strong>صفحه:</strong> {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
+    {% endif %}
+  </div>
+
+  <!-- لیست صورت جلسات -->
+  <div class="table-responsive">
+    <table class="table table-hover table-striped align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>پروژه</th>
+          <th>شماره صورت جلسه</th>
+          <th>تاریخ صورت جلسه</th>
+          <th>توضیحات</th>
+          <th>تاریخ ثبت</th>
+          <th>عملیات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if page_obj %}
+          {% for minute in page_obj %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>
+                <span class="badge bg-info text-dark">{{ minute.project.name }}</span>
+              </td>
+              <td>
+                <strong>{{ minute.minutes_number }}</strong>
+              </td>
+              <td>{{ minute.minutes_date }}</td>
+              <td>
+                {% if minute.description %}
+                  {{ minute.description|truncatewords:10 }}
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+              <td>
+                <small class="text-muted">{{ minute.created_at|date:"Y-m-d H:i" }}</small>
+              </td>
+              <td>
+                <div class="btn-group" role="group">
+                  <a href="{% url 'experiment:meeting_minutes_update' minute.pk %}" 
+                     class="btn btn-sm btn-outline-primary" title="ویرایش">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                  <a href="{% url 'experiment:meeting_minutes_delete' minute.pk %}" 
+                     class="btn btn-sm btn-outline-danger" title="حذف">
+                    <i class="bi bi-trash"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">
+              <i class="bi bi-inbox me-2"></i>هیچ صورت جلسه‌ای یافت نشد.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- صفحه‌بندی -->
+  {% if page_obj.has_other_pages %}
+    <nav aria-label="صفحه‌بندی" class="mt-4">
+      <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page=1{% if selected_project %}&project={{ selected_project }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+              <i class="bi bi-chevron-double-right me-1"></i>ابتدا
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_project %}&project={{ selected_project }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+              <i class="bi bi-chevron-right me-1"></i>قبلی
+            </a>
+          </li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+          {% if page_obj.number == num %}
+            <li class="page-item active">
+              <span class="page-link">{{ num }}</span>
+            </li>
+          {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ num }}{% if selected_project %}&project={{ selected_project }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
+            </li>
+          {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_project %}&project={{ selected_project }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+              <i class="bi bi-chevron-left me-1"></i>بعدی
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if selected_project %}&project={{ selected_project }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+              <i class="bi bi-chevron-double-left me-1"></i>انتها
+            </a>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% endif %}
+</div>
+
+<script src="{% static 'js/persian-datepicker.min.js' %}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const dateInputs = document.querySelectorAll('.jalali_date-input');
+    dateInputs.forEach(input => {
+      new PersianDatepicker(input, {
+        format: 'YYYY/MM/DD',
+        autoClose: true,
+      });
+    });
+  });
+</script>
+{% endblock %}

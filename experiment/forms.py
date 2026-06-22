@@ -373,6 +373,39 @@ class QualityCommissionForm(forms.ModelForm):
                 raise forms.ValidationError('ضریب کیفیت باید بین 0 تا 100 درصد باشد.')
         return coefficient
 
+class MeetingMinutesForm(forms.ModelForm):
+    minutes_date = JalaliDateField(
+        widget=AdminJalaliDateWidget,
+        label='تاریخ صورت جلسه',
+        required=True
+    )
+    
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        for field in self.fields:
+            if isinstance(self.fields[field].widget, (forms.TextInput, forms.NumberInput, forms.Textarea)):
+                self.fields[field].widget.attrs['class'] = 'form-control form-control-sm'
+            elif isinstance(self.fields[field].widget, forms.Select):
+                self.fields[field].widget.attrs['class'] = 'form-select'
+        
+        # تنظیم پروژه‌ها بر اساس دسترسی کاربر
+        self.fields['project'].widget = Select2Widget()
+        if user and not user.is_superuser:
+            self.fields['project'].queryset = user.accessible_projects.all()
+        else:
+            self.fields['project'].queryset = Project.objects.all()
+    
+    class Meta:
+        model = models.MeetingMinutes
+        fields = ['project', 'minutes_number', 'minutes_date', 'description']
+        widgets = {
+            'project': Select2Widget(attrs={'class': 'form-select'}),
+            'minutes_number': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
 class ExperimentTypeForm(forms.ModelForm):
     class Meta:
         model = models.ExperimentType

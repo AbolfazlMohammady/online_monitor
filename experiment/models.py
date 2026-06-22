@@ -341,6 +341,23 @@ class QualityCommission(models.Model):
     def __str__(self):
         return f"{self.project.name} - {self.get_layer_display()} - {self.coefficient}"
 
+class MeetingMinutes(models.Model):
+    """مدل برای صورت جلسات کمیسیون کیفیت"""
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name="پروژه")
+    minutes_number = models.IntegerField(verbose_name="شماره صورت جلسه")
+    minutes_date = jmodels.jDateField(verbose_name="تاریخ صورت جلسه")
+    description = models.TextField(verbose_name="توضیحات", null=True, blank=True)
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
+    
+    class Meta:
+        verbose_name = "صورت جلسه"
+        verbose_name_plural = "صورت جلسات"
+        ordering = ['-minutes_date']
+        unique_together = [['project', 'minutes_number']]
+    
+    def __str__(self):
+        return f"{self.project.name} - صورت جلسه {self.minutes_number}"
+
 class Message(models.Model):
     RESPONSE_MESSAGE = 0
     REQUEST_MESSAGE = 1
