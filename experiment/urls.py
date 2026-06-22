@@ -40,6 +40,7 @@ urlpatterns = [
     path('quality-commissions/<int:pk>/update/', views.quality_commission_update, name='quality_commission_update'),
     path('quality-commissions/<int:pk>/delete/', views.quality_commission_delete, name='quality_commission_delete'),
     path('quality-commissions/charts/', views.quality_commission_charts, name='quality_commission_charts'),
+    path('experiment-results/', views.experiment_results_charts, name='experiment_results_charts'),
     path('meeting-minutes/', views.meeting_minutes_list, name='meeting_minutes_list'),
     path('meeting-minutes/create/', views.meeting_minutes_create, name='meeting_minutes_create'),
     path('meeting-minutes/<int:pk>/update/', views.meeting_minutes_update, name='meeting_minutes_update'),

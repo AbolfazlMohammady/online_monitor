@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block title %}نتایج آزمایشات{% endblock %}
+
+{% block main %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>نتایج آزمایشات</h2>
+            <p class="text-muted">نمایش نمودارهای تحلیلی با فیلتر بر اساس پروژه، نوع آزمایش و بازه زمانی.</p>
+        </div>
+        <a href="{% url 'experiment:meeting_minutes_list' %}" class="btn btn-outline-primary">بازگشت به صورت جلسات</a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">پروژه</label>
+                    <select name="project" class="form-select">
+                        <option value="">همه پروژه‌ها</option>
+                        {% for project in projects %}
+                            <option value="{{ project.id }}" {% if selected_project|stringformat:"s" == project.id|stringformat:"s" %}selected{% endif %}>{{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">نوع آزمایش</label>
+                    <select name="subtype" class="form-select">
+                        <option value="">همه نوع‌ها</option>
+                        {% for subtype in subtypes %}
+                            <option value="{{ subtype.id }}" {% if selected_subtype|stringformat:"s" == subtype.id|stringformat:"s" %}selected{% endif %}>{{ subtype.experiment_type.name }} - {{ subtype.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">از تاریخ</label>
+                    <input type="text" name="date_from" class="form-control" value="{{ date_from }}" placeholder="YYYY/MM/DD">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">تا تاریخ</label>
+                    <input type="text" name="date_to" class="form-control" value="{{ date_to }}" placeholder="YYYY/MM/DD">
+                </div>
+                <div class="col-md-12 text-end">
+                    <button type="submit" class="btn btn-primary">جستجو</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row gy-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">Control Xbar-S</div>
+                <div class="card-body">
+                    <canvas id="xbarSChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">Control Xbar-R</div>
+                <div class="card-body">
+                    <canvas id="xbarRChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">هیستگرام</div>
+                <div class="card-body">
+                    <canvas id="histogramChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">نمودار پراکندگی</div>
+                <div class="card-body">
+                    <canvas id="scatterChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <div class="alert alert-info">
+            تعداد پاسخ‌های یافت‌شده: <strong>{{ total_responses }}</strong>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const chartData = {{ chart_data|safe }};
+    const allResponses = {{ all_responses|safe }};
+
+    function buildLineChart(ctx, label, data, color) {
+        return new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.months,
+                datasets: [{
+                    label: label,
+                    data: data,
+                    borderColor: color,
+                    backgroundColor: color,
+                    fill: false,
+                    tension: 0.2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    function buildBarChart(ctx) {
+        return new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartData.months,
+                datasets: [
+                    {
+                        label: 'تراکم',
+                        data: chartData.density,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)'
+                    },
+                    {
+                        label: 'مقاومت',
+                        data: chartData.strength,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    function buildScatterChart(ctx) {
+        const datasets = [];
+        const projectMap = {};
+
+        allResponses.forEach(resp => {
+            if (resp.density !== null && resp.strength !== null) {
+                const key = resp.project;
+                if (!projectMap[key]) {
+                    projectMap[key] = {
+                        label: key,
+                        data: [],
+                        backgroundColor: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`
+                    };
+                }
+                projectMap[key].data.push({ x: resp.density, y: resp.strength });
+            }
+        });
+
+        Object.values(projectMap).forEach(dataset => datasets.push(dataset));
+
+        return new Chart(ctx, {
+            type: 'scatter',
+            data: { datasets },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'تراکم' } },
+                    y: { title: { display: true, text: 'مقاومت' } }
+                }
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const xbarSCtx = document.getElementById('xbarSChart');
+        const xbarRCtx = document.getElementById('xbarRChart');
+        const histogramCtx = document.getElementById('histogramChart');
+        const scatterCtx = document.getElementById('scatterChart');
+
+        if (xbarSCtx) buildLineChart(xbarSCtx, 'Control Xbar-S', chartData.xbar_s, 'rgba(54, 162, 235, 1)');
+        if (xbarRCtx) buildLineChart(xbarRCtx, 'Control Xbar-R', chartData.xbar_r, 'rgba(75, 192, 192, 1)');
+        if (histogramCtx) buildBarChart(histogramCtx);
+        if (scatterCtx) buildScatterChart(scatterCtx);
+    });
+</script>
+{% endblock %}

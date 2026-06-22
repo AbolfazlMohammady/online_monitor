@@ -1065,6 +1065,148 @@ def meeting_minutes_delete(request, pk):
     })
 
 @login_required
+def experiment_results_charts(request):
+    """نمایش نمودارهای نتایج آزمایشات"""
+    from project.models import Project
+    from decimal import Decimal
+    from django.db.models import Avg, Q, Count
+    from datetime import datetime, timedelta
+    import json
+    
+    # دریافت پروژه‌های قابل دسترسی کاربر
+    user = request.user
+    if user.is_superuser:
+        projects = Project.objects.filter(parent_project__isnull=True).order_by('name')
+    else:
+        projects = user.accessible_projects.all()
+    
+    # دریافت پارامترهای فیلتر
+    project_id = request.GET.get('project', '')
+    subtype_id = request.GET.get('subtype', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    # دریافت تمام subtypes برای dropdown
+    subtypes = models.ExperimentSubType.objects.all().order_by('experiment_type__name', 'name')
+    
+    # شروع با تمام responses
+    responses = models.ExperimentResponse.objects.filter(
+        experiment_request__project__in=projects
+    ).select_related('experiment_request').prefetch_related('experiment_request__experiment_subtype')
+    
+    # فیلتر بر اساس پروژه
+    if project_id:
+        try:
+            responses = responses.filter(experiment_request__project_id=int(project_id))
+        except (ValueError, TypeError):
+            pass
+    
+    # فیلتر بر اساس نوع آزمایش (subtype)
+    if subtype_id:
+        try:
+            responses = responses.filter(experiment_request__experiment_subtype_id=int(subtype_id))
+        except (ValueError, TypeError):
+            pass
+    
+    # فیلتر بر اساس تاریخ
+    if date_from and date_to:
+        try:
+            from jalali_date import to_gregorian
+            parts_from = date_from.split('/')
+            parts_to = date_to.split('/')
+            if len(parts_from) == 3 and len(parts_to) == 3:
+                g_date_from = to_gregorian(int(parts_from[0]), int(parts_from[1]), int(parts_from[2]))
+                g_date_to = to_gregorian(int(parts_to[0]), int(parts_to[1]), int(parts_to[2]))
+                responses = responses.filter(response_date__gte=g_date_from, response_date__lte=g_date_to)
+        except Exception:
+            pass
+    
+    # محاسبه داده‌های نمودار بر اساس میانگین ماهانه
+    chart_data = {
+        'months': [],
+        'xbar_s': [],  # میانگین‌های ماهانه برای Xbar-S
+        'xbar_r': [],  # میانگین‌های ماهانه برای Xbar-R
+        'density': [],  # نتایج تراکم
+        'strength': [],  # نتایج مقاومت فشاری
+    }
+    
+    # تجمیع داده‌ها بر اساس ماه
+    from collections import defaultdict
+    monthly_data = defaultdict(lambda: {'density': [], 'strength': [], 'count': 0})
+    
+    for resp in responses:
+        try:
+            # محاسبه ماه
+            if resp.response_date:
+                month_key = resp.response_date.strftime('%Y-%m')
+                
+                if resp.density_result:
+                    monthly_data[month_key]['density'].append(float(resp.density_result))
+                if resp.strength_result1:
+                    monthly_data[month_key]['strength'].append(float(resp.strength_result1))
+                if resp.strength_result2:
+                    monthly_data[month_key]['strength'].append(float(resp.strength_result2))
+                if resp.strength_result3:
+                    monthly_data[month_key]['strength'].append(float(resp.strength_result3))
+                
+                monthly_data[month_key]['count'] += 1
+        except Exception:
+            continue
+    
+    # ترتیب‌دهی داده‌های ماهانه
+    sorted_months = sorted(monthly_data.keys())
+    
+    for month in sorted_months:
+        data = monthly_data[month]
+        chart_data['months'].append(month)
+        
+        # میانگین تراکم
+        if data['density']:
+            chart_data['xbar_s'].append(sum(data['density']) / len(data['density']))
+        else:
+            chart_data['xbar_s'].append(None)
+        
+        # میانگین مقاومت فشاری
+        if data['strength']:
+            chart_data['xbar_r'].append(sum(data['strength']) / len(data['strength']))
+        else:
+            chart_data['xbar_r'].append(None)
+        
+        # تعداد
+        chart_data['density'].append(len(data['density']))
+        chart_data['strength'].append(len(data['strength']))
+    
+    # تبدیل به JSON برای نمودارها
+    chart_data_json = json.dumps(chart_data)
+    
+    # نمایش همه پاسخ‌ها برای نمودار پراکندگی
+    all_responses = []
+    for resp in responses:
+        all_responses.append({
+            'project': resp.experiment_request.project.name,
+            'date': str(resp.response_date),
+            'density': float(resp.density_result) if resp.density_result else None,
+            'strength': float(resp.strength_result1) if resp.strength_result1 else None,
+            'count': 1
+        })
+    
+    all_responses_json = json.dumps(all_responses)
+    
+    context = {
+        'projects': projects,
+        'subtypes': subtypes,
+        'selected_project': project_id,
+        'selected_subtype': subtype_id,
+        'date_from': date_from,
+        'date_to': date_to,
+        'chart_data': chart_data_json,
+        'all_responses': all_responses_json,
+        'total_responses': responses.count(),
+    }
+    
+    return render(request, 'experiment/experiment_results_charts.html', context)
+
+@login_required
 def update_experiment_kilometers(request):
     """به‌روزرسانی کیلومتراژ آزمایشات به محدوده پروژه"""
     if not request.user.is_superuser:
