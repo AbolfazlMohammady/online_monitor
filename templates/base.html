@@ -279,8 +279,7 @@
               <li><a class="dropdown-item" href="{% url 'experiment:quality_commission_list' %}">لیست کمیسیون کیفیت</a></li>
               <li><a class="dropdown-item" href="{% url 'experiment:quality_commission_create' %}">افزودن کمیسیون کیفیت</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="{% url 'experiment:meeting_minutes_list' %}">لیست صورت جلسات</a></li>
-              <li><a class="dropdown-item" href="{% url 'experiment:meeting_minutes_create' %}">افزودن صورت جلسه</a></li>
+              <li><a class="dropdown-item" href="{% url 'experiment:meeting_minutes_list' %}">افزودن و مشاهده صورت جلسات</a></li>
             </ul>
           </li>
           {% if request.user.is_authenticated %}

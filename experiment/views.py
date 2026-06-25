@@ -930,21 +930,13 @@ def quality_commission_delete(request, pk):
 
 @login_required
 def meeting_minutes_create(request):
-    """ایجاد صورت جلسه جدید"""
-    if request.method == 'POST':
-        form = forms.MeetingMinutesForm(request.POST, user=request.user)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'صورت جلسه با موفقیت ثبت شد.')
-            return redirect('experiment:meeting_minutes_list')
-    else:
-        form = forms.MeetingMinutesForm(user=request.user)
-    
-    return render(request, 'experiment/meeting_minutes_form.html', {'form': form})
+    """Redirect to combined add/list page."""
+    return redirect('experiment:meeting_minutes_list')
+
 
 @login_required
 def meeting_minutes_list(request):
-    """نمایش لیست صورت جلسات"""
+    """افزودن و مشاهده صورت جلسات در یک صفحه"""
     from project.utils import (
         get_filter_projects,
         filter_queryset_by_project,
@@ -954,16 +946,24 @@ def meeting_minutes_list(request):
 
     user = request.user
     accessible = get_user_accessible_projects(user)
-    minutes = models.MeetingMinutes.objects.filter(project__in=accessible)
     projects = get_filter_projects(user)
-    
+    form = forms.MeetingMinutesForm(user=user)
+
+    if request.method == 'POST':
+        form = forms.MeetingMinutesForm(request.POST, request.FILES, user=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'صورت جلسه با موفقیت ثبت شد.')
+            return redirect('experiment:meeting_minutes_list')
+
+    minutes = models.MeetingMinutes.objects.filter(project__in=accessible)
+
     project_id = request.GET.get('project', '').strip()
     minutes = filter_queryset_by_project(minutes, project_id, user)
-    
-    # فیلتر بر اساس تاریخ
+
     date_from = request.GET.get('date_from', '').strip()
     date_to = request.GET.get('date_to', '').strip()
-    
+
     if date_from:
         g_date = parse_jalali_date_string(date_from)
         if g_date:
@@ -973,18 +973,16 @@ def meeting_minutes_list(request):
         g_date = parse_jalali_date_string(date_to)
         if g_date:
             minutes = minutes.filter(minutes_date__lte=g_date)
-    
-    # مرتب‌سازی بر اساس تاریخ نزولی
+
     minutes = minutes.order_by('-minutes_date', '-created_at')
-    
     total_minutes = minutes.count()
-    
-    # صفحه‌بندی (10 مورد در هر صفحه)
+
     paginator = Paginator(minutes, 10)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
-    
+
     return render(request, 'experiment/meeting_minutes_list.html', {
+        'form': form,
         'minutes': page_obj,
         'page_obj': page_obj,
         'projects': projects,
@@ -999,7 +997,7 @@ def meeting_minutes_update(request, pk):
     """ویرایش صورت جلسه"""
     minutes = get_object_or_404(models.MeetingMinutes, pk=pk)
     if request.method == 'POST':
-        form = forms.MeetingMinutesForm(request.POST, instance=minutes, user=request.user)
+        form = forms.MeetingMinutesForm(request.POST, request.FILES, instance=minutes, user=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, 'صورت جلسه با موفقیت بروزرسانی شد.')

@@ -379,6 +379,11 @@ class MeetingMinutesForm(forms.ModelForm):
         label='تاریخ صورت جلسه',
         required=True
     )
+    minutes_number = forms.IntegerField(
+        label='نتیجه صورت جلسه',
+        min_value=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+    )
     
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
@@ -386,11 +391,12 @@ class MeetingMinutesForm(forms.ModelForm):
         
         for field in self.fields:
             if isinstance(self.fields[field].widget, (forms.TextInput, forms.NumberInput, forms.Textarea)):
-                self.fields[field].widget.attrs['class'] = 'form-control form-control-sm'
+                self.fields[field].widget.attrs.setdefault('class', 'form-control')
             elif isinstance(self.fields[field].widget, forms.Select):
-                self.fields[field].widget.attrs['class'] = 'form-select'
+                self.fields[field].widget.attrs.setdefault('class', 'form-select')
+            elif isinstance(self.fields[field].widget, forms.ClearableFileInput):
+                self.fields[field].widget.attrs.setdefault('class', 'form-control')
         
-        # تنظیم پروژه‌ها بر اساس دسترسی کاربر
         self.fields['project'].widget = Select2Widget()
         if user and not user.is_superuser:
             self.fields['project'].queryset = user.accessible_projects.all()
@@ -399,10 +405,10 @@ class MeetingMinutesForm(forms.ModelForm):
     
     class Meta:
         model = models.MeetingMinutes
-        fields = ['project', 'minutes_number', 'minutes_date', 'description']
+        fields = ['project', 'minutes_number', 'minutes_date', 'minutes_file', 'description']
         widgets = {
             'project': Select2Widget(attrs={'class': 'form-select'}),
-            'minutes_number': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'minutes_file': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.doc,.docx,.jpg,.jpeg,.png'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 

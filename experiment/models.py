@@ -344,8 +344,14 @@ class QualityCommission(models.Model):
 class MeetingMinutes(models.Model):
     """مدل برای صورت جلسات کمیسیون کیفیت"""
     project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name="پروژه")
-    minutes_number = models.IntegerField(verbose_name="شماره صورت جلسه")
+    minutes_number = models.IntegerField(verbose_name="نتیجه صورت جلسه")
     minutes_date = jmodels.jDateField(verbose_name="تاریخ صورت جلسه")
+    minutes_file = models.FileField(
+        upload_to='meeting_minutes/',
+        verbose_name="فایل صورت جلسه",
+        null=True,
+        blank=True,
+    )
     description = models.TextField(verbose_name="توضیحات", null=True, blank=True)
     created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
     
@@ -356,7 +362,7 @@ class MeetingMinutes(models.Model):
         unique_together = [['project', 'minutes_number']]
     
     def __str__(self):
-        return f"{self.project.name} - صورت جلسه {self.minutes_number}"
+        return f"{self.project.name} - نتیجه {self.minutes_number}"
 
 class Message(models.Model):
     RESPONSE_MESSAGE = 0

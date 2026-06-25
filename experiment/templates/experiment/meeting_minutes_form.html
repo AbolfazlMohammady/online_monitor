@@ -2,7 +2,7 @@
 {% load static %}
 {% load widget_tweaks %}
 
-{% block title %}{% if form.instance.pk %}ویرایش صورت جلسه{% else %}افزودن صورت جلسه{% endif %}{% endblock %}
+{% block title %}ویرایش صورت جلسه{% endblock %}
 
 {% block head %}
   {{ form.media }}
@@ -16,7 +16,7 @@
     </button>
     <div class="page-toolbar-actions">
       <a href="{% url 'experiment:meeting_minutes_list' %}" class="btn btn-outline-primary rounded-pill px-4">
-        <i class="bi bi-list me-2"></i>لیست صورت جلسات
+        <i class="bi bi-list me-2"></i>افزودن و مشاهده صورت جلسات
       </a>
     </div>
   </div>
@@ -25,57 +25,51 @@
     <div class="col-lg-8">
       <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
         <div class="card-header bg-gradient text-white text-center">
-          <h6 class="mb-0">
-            <i class="bi bi-file-text me-2"></i>
-            {% if form.instance.pk %}ویرایش صورت جلسه{% else %}افزودن صورت جلسه{% endif %}
-          </h6>
+          <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>ویرایش صورت جلسه</h6>
         </div>
         <div class="card-body p-4">
-          <form method="post" class="needs-validation" novalidate>
+          <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
             {% csrf_token %}
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="{{ form.project.id_for_label }}" class="form-label fw-bold">
-                  <i class="bi bi-briefcase text-primary me-2"></i>پروژه *
-                </label>
+                <label for="{{ form.project.id_for_label }}" class="form-label fw-bold">پروژه *</label>
                 {{ form.project }}
-                {% for error in form.project.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                {% for error in form.project.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
               </div>
               <div class="col-md-6 mb-3">
-                <label for="{{ form.minutes_number.id_for_label }}" class="form-label fw-bold">
-                  <i class="bi bi-hash text-primary me-2"></i>شماره صورت جلسه *
-                </label>
+                <label for="{{ form.minutes_number.id_for_label }}" class="form-label fw-bold">نتیجه صورت جلسه *</label>
                 {{ form.minutes_number }}
-                {% for error in form.minutes_number.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                {% for error in form.minutes_number.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
               </div>
             </div>
-
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="{{ form.minutes_date.id_for_label }}" class="form-label fw-bold">
-                  <i class="bi bi-calendar text-primary me-2"></i>تاریخ صورت جلسه *
-                </label>
+                <label for="{{ form.minutes_date.id_for_label }}" class="form-label fw-bold">تاریخ صورت جلسه *</label>
                 {% render_field form.minutes_date class="jalali_date-input form-control" %}
-                {% for error in form.minutes_date.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                {% for error in form.minutes_date.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="{{ form.minutes_file.id_for_label }}" class="form-label fw-bold">فایل صورت جلسه</label>
+                {{ form.minutes_file }}
+                {% if form.instance.minutes_file %}
+                  <div class="mt-1">
+                    <a href="{{ form.instance.minutes_file.url }}" target="_blank" rel="noopener">فایل فعلی</a>
+                  </div>
+                {% endif %}
+                {% for error in form.minutes_file.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
               </div>
             </div>
-
             <div class="row">
               <div class="col-12 mb-3">
-                <label for="{{ form.description.id_for_label }}" class="form-label fw-bold">
-                  <i class="bi bi-text-paragraph text-primary me-2"></i>توضیحات
-                </label>
+                <label for="{{ form.description.id_for_label }}" class="form-label fw-bold">توضیحات</label>
                 {{ form.description }}
-                {% for error in form.description.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                {% for error in form.description.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
               </div>
             </div>
-
             <div class="d-flex justify-content-between align-items-center pt-3">
-              <a href="{% url 'experiment:meeting_minutes_list' %}" class="btn btn-outline-secondary rounded-pill px-4">
-                <i class="bi bi-arrow-right me-2"></i>انصراف
-              </a>
+              <a href="{% url 'experiment:meeting_minutes_list' %}" class="btn btn-outline-secondary rounded-pill px-4">انصراف</a>
               <button type="submit" class="btn btn-primary rounded-pill px-4">
-                <i class="bi bi-check me-2"></i>{% if form.instance.pk %}بروزرسانی{% else %}افزودن{% endif %}
+                <i class="bi bi-check me-2"></i>بروزرسانی
               </button>
             </div>
           </form>
