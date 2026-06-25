@@ -875,25 +875,28 @@ class DashboardView(LoginRequiredMixin, generic.TemplateView):
         
         # محاسبه آمار به ازای هر پروژه
         from project.models import Project
+        from project.utils import get_filter_projects, get_project_filter_ids
         projects_stats = []
         
         # فیلتر پروژه‌ها
         if project_filter:
             try:
                 project_id = int(project_filter)
-                all_projects = Project.objects.filter(id=project_id)
-                context['selected_project_id'] = project_id
+                project_ids = get_project_filter_ids(project_id, self.request.user)
+                if project_ids:
+                    all_projects = Project.objects.filter(id__in=project_ids)
+                    context['selected_project_id'] = project_id
+                else:
+                    all_projects = Project.objects.filter(parent_project__isnull=True)
+                    context['selected_project_id'] = None
             except (ValueError, TypeError):
-                # اگر فیلتر پروژه نامعتبر باشد، همه پروژه‌های اصلی را نشان بده
                 all_projects = Project.objects.filter(parent_project__isnull=True)
                 context['selected_project_id'] = None
         else:
-            # اگر فیلتر پروژه انتخاب نشده، فقط پروژه‌های اصلی را نشان بده
             all_projects = Project.objects.filter(parent_project__isnull=True)
             context['selected_project_id'] = None
         
-        # لیست همه پروژه‌ها برای dropdown
-        context['all_projects'] = Project.objects.all().order_by('name')
+        context['all_projects'] = get_filter_projects(self.request.user)
 
         # X/Y charts after the doughnut dashboard charts: latest value per project/layer.
         from experiment.models import PaymentCoefficient, QualityCommission

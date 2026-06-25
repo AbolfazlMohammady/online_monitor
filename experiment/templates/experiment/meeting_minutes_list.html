@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}لیست صورت جلسات{% endblock %}
 
 {% block head %}
-  <link href="{% static 'css/persian-datepicker.min.css' %}" rel="stylesheet" />
 {% endblock %}
 
 {% block main %}
@@ -35,7 +35,7 @@
             <option value="">-- انتخاب پروژه --</option>
             {% for project in projects %}
               <option value="{{ project.id }}" {% if project.id|stringformat:"s" == selected_project %}selected{% endif %}>
-                {{ project.name }}
+                {{ project|project_filter_label }}
               </option>
             {% endfor %}
           </select>
@@ -44,13 +44,13 @@
         <div class="col-md-3">
           <label for="date_from" class="form-label fw-bold">از تاریخ</label>
           <input type="text" id="date_from" name="date_from" class="jalali_date-input form-control" 
-                 value="{{ date_from }}" placeholder="YYYY/MM/DD">
+                 value="{{ date_from }}" placeholder="1403/01/01" autocomplete="off">
         </div>
         
         <div class="col-md-3">
           <label for="date_to" class="form-label fw-bold">تا تاریخ</label>
           <input type="text" id="date_to" name="date_to" class="jalali_date-input form-control" 
-                 value="{{ date_to }}" placeholder="YYYY/MM/DD">
+                 value="{{ date_to }}" placeholder="1403/12/29" autocomplete="off">
         </div>
         
         <div class="col-md-3 d-flex align-items-end">
@@ -180,17 +180,4 @@
     </nav>
   {% endif %}
 </div>
-
-<script src="{% static 'js/persian-datepicker.min.js' %}"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const dateInputs = document.querySelectorAll('.jalali_date-input');
-    dateInputs.forEach(input => {
-      new PersianDatepicker(input, {
-        format: 'YYYY/MM/DD',
-        autoClose: true,
-      });
-    });
-  });
-</script>
 {% endblock %}

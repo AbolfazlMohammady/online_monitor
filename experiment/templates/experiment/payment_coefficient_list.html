@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}ضرایب پرداخت{% endblock %}
 
@@ -42,7 +43,7 @@
               <option value="">همه پروژه‌ها</option>
               {% for project in projects %}
               <option value="{{ project.id }}" {% if selected_project == project.id|stringformat:"s" %}selected{% endif %}>
-                {{ project.name }}
+                {{ project|project_filter_label }}
               </option>
               {% endfor %}
             </select>

@@ -62,7 +62,7 @@
             <select name="project" id="project-filter" class="form-select form-select-sm" style="width: 200px;">
               <option value="">همه پروژه‌ها</option>
               {% for project in all_projects %}
-              <option value="{{ project.id }}" {% if selected_project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
+              <option value="{{ project.id }}" {% if selected_project_id == project.id %}selected{% endif %}>{{ project|project_filter_label }}</option>
               {% endfor %}
             </select>
           </div>

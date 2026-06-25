@@ -267,40 +267,18 @@ class ExperimentApprovalCreateView(LoginRequiredMixin, generic.CreateView):
 
 @login_required
 def experiment_request_list(request):
+    from project.utils import get_filter_projects, filter_queryset_by_project, get_user_accessible_projects
+
     user = request.user
+    accessible = get_user_accessible_projects(user)
+    experiment_requests = models.ExperimentRequest.objects.filter(project__in=accessible)
+    projects = get_filter_projects(user)
     
-    # فیلتر کردن بر اساس دسترسی کاربر به پروژه‌ها
-    from project.models import Project
-    if user.is_superuser:
-        experiment_requests = models.ExperimentRequest.objects.all()
-        projects = Project.objects.all()
-    else:
-        experiment_requests = models.ExperimentRequest.objects.filter(project__in=user.accessible_projects.all())
-        projects = user.accessible_projects.all()
-    
-    # دریافت پارامترهای GET
     project_id = request.GET.get('project', '').strip()
     status = request.GET.get('status', '').strip()
     search = request.GET.get('search', '').strip()
     
-    # دیباگ - چاپ مقادیر دریافتی
-    print(f"DEBUG: GET params - project_id: '{project_id}', status: '{status}', search: '{search}'")
-    print(f"DEBUG: All GET params: {dict(request.GET)}")
-    
-    # فیلتر بر اساس پروژه
-    if project_id:
-        try:
-            project_id_int = int(project_id)
-            # چک کردن دسترسی کاربر به پروژه
-            if not user.is_superuser:
-                if not user.accessible_projects.filter(id=project_id_int).exists():
-                    messages.error(request, 'شما به این پروژه دسترسی ندارید.')
-                    project_id_int = None
-            if project_id_int:
-                experiment_requests = experiment_requests.filter(project_id=project_id_int)
-                print(f"DEBUG: Filtered by project_id: {project_id_int}, count: {experiment_requests.count()}")
-        except (ValueError, TypeError) as e:
-            print(f"DEBUG: Invalid project_id: {project_id}, error: {e}")
+    experiment_requests = filter_queryset_by_project(experiment_requests, project_id, user)
     
     # فیلتر بر اساس وضعیت
     if status:
@@ -796,8 +774,9 @@ def payment_coefficient_list(request):
         
         try:
             from project.models import Project
-            projects = Project.objects.filter(parent_project__isnull=True).order_by('name')
-            logger.info(f"Successfully fetched {projects.count()} projects")
+            from project.utils import get_filter_projects
+            projects = get_filter_projects(request.user)
+            logger.info(f"Successfully fetched {len(projects)} projects")
         except Exception as db_error:
             logger.error(f"Projects database error: {str(db_error)}")
             projects = []
@@ -815,7 +794,10 @@ def payment_coefficient_list(request):
         logger.info(f"Filtering coefficients - project_id: {project_id}, layer: {layer}")
         
         if project_id and coefficients:
-            coefficients = coefficients.filter(project_id=project_id)
+            from project.utils import get_project_filter_ids
+            project_ids = get_project_filter_ids(project_id, request.user)
+            if project_ids:
+                coefficients = coefficients.filter(project_id__in=project_ids)
         if layer and coefficients:
             coefficients = coefficients.filter(layer=layer)
         
@@ -891,17 +873,16 @@ def quality_commission_create(request):
 
 @login_required
 def quality_commission_list(request):
+    from project.utils import get_filter_projects, filter_queryset_by_project
+
     commissions = models.QualityCommission.objects.all()
-    
-    from project.models import Project
-    projects = Project.objects.filter(parent_project__isnull=True).order_by('name')
+    projects = get_filter_projects(request.user)
     layers = models.QualityCommission.LAYER_CHOICES
     
     project_id = request.GET.get('project')
     layer = request.GET.get('layer')
     
-    if project_id:
-        commissions = commissions.filter(project_id=project_id)
+    commissions = filter_queryset_by_project(commissions, project_id, request.user)
     if layer:
         commissions = commissions.filter(layer=layer)
 
@@ -964,57 +945,34 @@ def meeting_minutes_create(request):
 @login_required
 def meeting_minutes_list(request):
     """نمایش لیست صورت جلسات"""
+    from project.utils import (
+        get_filter_projects,
+        filter_queryset_by_project,
+        get_user_accessible_projects,
+        parse_jalali_date_string,
+    )
+
     user = request.user
+    accessible = get_user_accessible_projects(user)
+    minutes = models.MeetingMinutes.objects.filter(project__in=accessible)
+    projects = get_filter_projects(user)
     
-    # فیلتر بر اساس دسترسی کاربر
-    from project.models import Project
-    if user.is_superuser:
-        minutes = models.MeetingMinutes.objects.all()
-        projects = Project.objects.filter(parent_project__isnull=True).order_by('name')
-    else:
-        minutes = models.MeetingMinutes.objects.filter(project__in=user.accessible_projects.all())
-        projects = user.accessible_projects.all()
-    
-    # فیلتر بر اساس پروژه
     project_id = request.GET.get('project', '').strip()
-    if project_id:
-        try:
-            project_id_int = int(project_id)
-            if not user.is_superuser:
-                if not user.accessible_projects.filter(id=project_id_int).exists():
-                    messages.error(request, 'شما به این پروژه دسترسی ندارید.')
-                    project_id_int = None
-            if project_id_int:
-                minutes = minutes.filter(project_id=project_id_int)
-        except (ValueError, TypeError):
-            pass
+    minutes = filter_queryset_by_project(minutes, project_id, user)
     
     # فیلتر بر اساس تاریخ
     date_from = request.GET.get('date_from', '').strip()
     date_to = request.GET.get('date_to', '').strip()
     
     if date_from:
-        try:
-            from jalali_date import to_gregorian
-            # تبدیل تاریخ جلالی به میلادی
-            from django.utils.dateparse import parse_date
-            # فرض کنید تاریخ به صورت YYYY/MM/DD ارسال شده است
-            parts = date_from.split('/')
-            if len(parts) == 3:
-                g_date = to_gregorian(int(parts[0]), int(parts[1]), int(parts[2]))
-                minutes = minutes.filter(minutes_date__gte=g_date)
-        except Exception:
-            pass
-    
+        g_date = parse_jalali_date_string(date_from)
+        if g_date:
+            minutes = minutes.filter(minutes_date__gte=g_date)
+
     if date_to:
-        try:
-            from jalali_date import to_gregorian
-            parts = date_to.split('/')
-            if len(parts) == 3:
-                g_date = to_gregorian(int(parts[0]), int(parts[1]), int(parts[2]))
-                minutes = minutes.filter(minutes_date__lte=g_date)
-        except Exception:
-            pass
+        g_date = parse_jalali_date_string(date_to)
+        if g_date:
+            minutes = minutes.filter(minutes_date__lte=g_date)
     
     # مرتب‌سازی بر اساس تاریخ نزولی
     minutes = minutes.order_by('-minutes_date', '-created_at')
@@ -1067,143 +1025,184 @@ def meeting_minutes_delete(request, pk):
 @login_required
 def experiment_results_charts(request):
     """نمایش نمودارهای نتایج آزمایشات"""
-    from project.models import Project
-    from decimal import Decimal
-    from django.db.models import Avg, Q, Count
-    from datetime import datetime, timedelta
-    import json
-    
-    # دریافت پروژه‌های قابل دسترسی کاربر
-    user = request.user
-    if user.is_superuser:
-        projects = Project.objects.filter(parent_project__isnull=True).order_by('name')
-    else:
-        projects = user.accessible_projects.all()
-    
-    # دریافت پارامترهای فیلتر
-    project_id = request.GET.get('project', '')
-    subtype_id = request.GET.get('subtype', '')
-    date_from = request.GET.get('date_from', '')
-    date_to = request.GET.get('date_to', '')
-    
-    # دریافت تمام subtypes برای dropdown
-    subtypes = models.ExperimentSubType.objects.all().order_by('experiment_type__name', 'name')
-    
-    # شروع با تمام responses
-    responses = models.ExperimentResponse.objects.filter(
-        experiment_request__project__in=projects
-    ).select_related('experiment_request').prefetch_related('experiment_request__experiment_subtype')
-    
-    # فیلتر بر اساس پروژه
-    if project_id:
-        try:
-            responses = responses.filter(experiment_request__project_id=int(project_id))
-        except (ValueError, TypeError):
-            pass
-    
-    # فیلتر بر اساس نوع آزمایش (subtype)
-    if subtype_id:
-        try:
-            responses = responses.filter(experiment_request__experiment_subtype_id=int(subtype_id))
-        except (ValueError, TypeError):
-            pass
-    
-    # فیلتر بر اساس تاریخ
-    if date_from and date_to:
-        try:
-            from jalali_date import to_gregorian
-            parts_from = date_from.split('/')
-            parts_to = date_to.split('/')
-            if len(parts_from) == 3 and len(parts_to) == 3:
-                g_date_from = to_gregorian(int(parts_from[0]), int(parts_from[1]), int(parts_from[2]))
-                g_date_to = to_gregorian(int(parts_to[0]), int(parts_to[1]), int(parts_to[2]))
-                responses = responses.filter(response_date__gte=g_date_from, response_date__lte=g_date_to)
-        except Exception:
-            pass
-    
-    # محاسبه داده‌های نمودار بر اساس میانگین ماهانه
-    chart_data = {
-        'months': [],
-        'xbar_s': [],  # میانگین‌های ماهانه برای Xbar-S
-        'xbar_r': [],  # میانگین‌های ماهانه برای Xbar-R
-        'density': [],  # نتایج تراکم
-        'strength': [],  # نتایج مقاومت فشاری
-    }
-    
-    # تجمیع داده‌ها بر اساس ماه
+    from project.utils import (
+        get_filter_projects,
+        get_user_accessible_projects,
+        filter_queryset_by_nested_project,
+        parse_jalali_date_string,
+    )
+    from experiment.chart_utils import (
+        EXPERIMENT_RESULT_LAYERS,
+        get_subtypes_for_layer,
+        get_all_chart_subtypes,
+        filter_responses_by_layer,
+        filter_responses_to_chart_layers,
+        build_empty_chart_data,
+    )
     from collections import defaultdict
-    monthly_data = defaultdict(lambda: {'density': [], 'strength': [], 'count': 0})
-    
-    for resp in responses:
-        try:
-            # محاسبه ماه
-            if resp.response_date:
-                month_key = resp.response_date.strftime('%Y-%m')
-                
-                if resp.density_result:
+    import json
+
+    empty_chart = json.dumps(build_empty_chart_data(), ensure_ascii=False)
+
+    try:
+        user = request.user
+        accessible = get_user_accessible_projects(user)
+        projects = get_filter_projects(user)
+
+        project_id = request.GET.get('project', '').strip()
+        layer_code = request.GET.get('layer', '').strip()
+        subtype_id = request.GET.get('subtype', '').strip()
+        date_from = request.GET.get('date_from', '').strip()
+        date_to = request.GET.get('date_to', '').strip()
+
+        subtypes = get_subtypes_for_layer(layer_code) if layer_code else get_all_chart_subtypes()
+
+        responses = models.ExperimentResponse.objects.filter(
+            experiment_request__project__in=accessible
+        ).select_related(
+            'experiment_request',
+            'experiment_request__project',
+            'experiment_request__layer',
+            'experiment_request__layer__layer_type',
+        ).prefetch_related('experiment_request__experiment_subtype')
+
+        responses = filter_queryset_by_nested_project(responses, project_id, user)
+        responses = filter_responses_to_chart_layers(responses)
+
+        if layer_code:
+            responses = filter_responses_by_layer(responses, layer_code)
+
+        if subtype_id:
+            try:
+                subtype_id_int = int(subtype_id)
+                if layer_code:
+                    allowed_ids = set(
+                        get_subtypes_for_layer(layer_code).values_list('id', flat=True)
+                    )
+                    if subtype_id_int not in allowed_ids:
+                        subtype_id_int = None
+                if subtype_id_int:
+                    responses = responses.filter(
+                        experiment_request__experiment_subtype__id=subtype_id_int
+                    ).distinct()
+            except (ValueError, TypeError):
+                pass
+
+        g_date_from = parse_jalali_date_string(date_from)
+        g_date_to = parse_jalali_date_string(date_to)
+        if g_date_from:
+            responses = responses.filter(response_date__gte=g_date_from)
+        if g_date_to:
+            responses = responses.filter(response_date__lte=g_date_to)
+
+        chart_data = {
+            'months': [],
+            'xbar_s': [],
+            'xbar_r': [],
+            'density': [],
+            'strength': [],
+        }
+
+        monthly_data = defaultdict(lambda: {'density': [], 'strength': [], 'count': 0})
+
+        for resp in responses:
+            try:
+                if not resp.response_date:
+                    continue
+                month_key = str(resp.response_date).replace('/', '-')[:7]
+                if len(month_key) < 7:
+                    month_key = str(resp.response_date)[:7]
+
+                if resp.density_result is not None:
                     monthly_data[month_key]['density'].append(float(resp.density_result))
-                if resp.strength_result1:
+                if resp.strength_result1 is not None:
                     monthly_data[month_key]['strength'].append(float(resp.strength_result1))
-                if resp.strength_result2:
+                if resp.strength_result2 is not None:
                     monthly_data[month_key]['strength'].append(float(resp.strength_result2))
-                if resp.strength_result3:
+                if resp.strength_result3 is not None:
                     monthly_data[month_key]['strength'].append(float(resp.strength_result3))
-                
+
                 monthly_data[month_key]['count'] += 1
-        except Exception:
-            continue
-    
-    # ترتیب‌دهی داده‌های ماهانه
-    sorted_months = sorted(monthly_data.keys())
-    
-    for month in sorted_months:
-        data = monthly_data[month]
-        chart_data['months'].append(month)
-        
-        # میانگین تراکم
-        if data['density']:
-            chart_data['xbar_s'].append(sum(data['density']) / len(data['density']))
-        else:
-            chart_data['xbar_s'].append(None)
-        
-        # میانگین مقاومت فشاری
-        if data['strength']:
-            chart_data['xbar_r'].append(sum(data['strength']) / len(data['strength']))
-        else:
-            chart_data['xbar_r'].append(None)
-        
-        # تعداد
-        chart_data['density'].append(len(data['density']))
-        chart_data['strength'].append(len(data['strength']))
-    
-    # تبدیل به JSON برای نمودارها
-    chart_data_json = json.dumps(chart_data)
-    
-    # نمایش همه پاسخ‌ها برای نمودار پراکندگی
-    all_responses = []
-    for resp in responses:
-        all_responses.append({
-            'project': resp.experiment_request.project.name,
-            'date': str(resp.response_date),
-            'density': float(resp.density_result) if resp.density_result else None,
-            'strength': float(resp.strength_result1) if resp.strength_result1 else None,
-            'count': 1
-        })
-    
-    all_responses_json = json.dumps(all_responses)
-    
-    context = {
-        'projects': projects,
-        'subtypes': subtypes,
-        'selected_project': project_id,
-        'selected_subtype': subtype_id,
-        'date_from': date_from,
-        'date_to': date_to,
-        'chart_data': chart_data_json,
-        'all_responses': all_responses_json,
-        'total_responses': responses.count(),
-    }
-    
+            except (TypeError, ValueError):
+                continue
+
+        for month in sorted(monthly_data.keys()):
+            data = monthly_data[month]
+            chart_data['months'].append(month)
+
+            if data['density']:
+                chart_data['xbar_s'].append(sum(data['density']) / len(data['density']))
+            else:
+                chart_data['xbar_s'].append(None)
+
+            if data['strength']:
+                chart_data['xbar_r'].append(sum(data['strength']) / len(data['strength']))
+            else:
+                chart_data['xbar_r'].append(None)
+
+            chart_data['density'].append(len(data['density']))
+            chart_data['strength'].append(len(data['strength']))
+
+        if not chart_data['months']:
+            chart_data = build_empty_chart_data()
+
+        all_responses = []
+        for resp in responses:
+            try:
+                all_responses.append({
+                    'project': resp.experiment_request.project.name,
+                    'date': str(resp.response_date),
+                    'density': float(resp.density_result) if resp.density_result is not None else None,
+                    'strength': float(resp.strength_result1) if resp.strength_result1 is not None else None,
+                })
+            except (TypeError, ValueError, AttributeError):
+                continue
+
+        total_responses = len(all_responses)
+
+        context = {
+            'projects': projects,
+            'layers': EXPERIMENT_RESULT_LAYERS,
+            'subtypes': subtypes,
+            'all_subtypes_json': json.dumps([
+                {
+                    'id': s.id,
+                    'name': s.name,
+                    'type': s.experiment_type.name,
+                    'layer': next(
+                        (item['code'] for item in EXPERIMENT_RESULT_LAYERS if s.name in item['subtype_names']),
+                        ''
+                    ),
+                }
+                for s in get_all_chart_subtypes()
+            ], ensure_ascii=False),
+            'selected_project': project_id,
+            'selected_layer': layer_code,
+            'selected_subtype': subtype_id,
+            'date_from': date_from,
+            'date_to': date_to,
+            'chart_data': json.dumps(chart_data, ensure_ascii=False),
+            'all_responses': json.dumps(all_responses, ensure_ascii=False),
+            'total_responses': total_responses,
+        }
+    except Exception as e:
+        logger.exception('Error in experiment_results_charts: %s', e)
+        messages.error(request, 'خطا در بارگذاری نمودارهای نتایج آزمایشات. لطفاً فیلترها را بررسی کنید.')
+        context = {
+            'projects': get_filter_projects(request.user),
+            'layers': EXPERIMENT_RESULT_LAYERS,
+            'subtypes': get_all_chart_subtypes(),
+            'all_subtypes_json': '[]',
+            'selected_project': '',
+            'selected_layer': '',
+            'selected_subtype': '',
+            'date_from': '',
+            'date_to': '',
+            'chart_data': empty_chart,
+            'all_responses': '[]',
+            'total_responses': 0,
+        }
+
     return render(request, 'experiment/experiment_results_charts.html', context)
 
 @login_required

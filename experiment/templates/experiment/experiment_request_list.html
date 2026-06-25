@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block head %}
 <link href="{% static 'css/select2.min.css' %}" rel="stylesheet" />
@@ -36,7 +37,7 @@
                                         <option value="">همه</option>
                                         {% for project in projects %}
                                         <option value="{{ project.id }}" {% if selected_project == project.id|stringformat:"s" %}selected{% endif %}>
-                                            {{ project.name }}
+                                            {{ project|project_filter_label }}
                                         </option>
                                         {% endfor %}
                                     </select>

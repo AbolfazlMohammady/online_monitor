@@ -13,6 +13,12 @@ def persian_number(value):
     return ''.join(persian_digits[int(ch)] if ch.isdigit() else ch for ch in str(value))
 
 @register.filter
+def project_filter_label(project):
+    from project.utils import project_filter_display_name
+    return project_filter_display_name(project)
+
+
+@register.filter
 def intcomma_float(value, decimal_places=3):
     try:
         value = float(value)

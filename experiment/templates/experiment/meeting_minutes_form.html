@@ -6,7 +6,6 @@
 
 {% block head %}
   {{ form.media }}
-  <link href="{% static 'css/persian-datepicker.min.css' %}" rel="stylesheet" />
 {% endblock %}
 
 {% block main %}
@@ -85,17 +84,4 @@
     </div>
   </div>
 </div>
-
-<script src="{% static 'js/persian-datepicker.min.js' %}"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const dateInputs = document.querySelectorAll('.jalali_date-input');
-    dateInputs.forEach(input => {
-      new PersianDatepicker(input, {
-        format: 'YYYY/MM/DD',
-        autoClose: true,
-      });
-    });
-  });
-</script>
 {% endblock %}

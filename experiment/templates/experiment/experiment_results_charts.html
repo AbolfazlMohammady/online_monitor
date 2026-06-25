@@ -1,48 +1,68 @@
 {% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
 
 {% block title %}نتایج آزمایشات{% endblock %}
+
+{% block head %}
+<style>
+  .chart-card .card-body { min-height: 320px; position: relative; }
+  .chart-card canvas { min-height: 280px; }
+</style>
+{% endblock %}
 
 {% block main %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2>نتایج آزمایشات</h2>
-            <p class="text-muted">نمایش نمودارهای تحلیلی با فیلتر بر اساس پروژه، نوع آزمایش و بازه زمانی.</p>
+            <p class="text-muted">نمایش نمودارهای تحلیلی با فیلتر بر اساس پروژه، لایه، نوع آزمایش و بازه زمانی.</p>
         </div>
-        <a href="{% url 'experiment:meeting_minutes_list' %}" class="btn btn-outline-primary">بازگشت به صورت جلسات</a>
     </div>
 
     <div class="card mb-4">
         <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-4">
+            <form method="get" class="row g-3" id="results-filter-form">
+                <div class="col-md-3">
                     <label class="form-label">پروژه</label>
                     <select name="project" class="form-select">
                         <option value="">همه پروژه‌ها</option>
                         {% for project in projects %}
-                            <option value="{{ project.id }}" {% if selected_project|stringformat:"s" == project.id|stringformat:"s" %}selected{% endif %}>{{ project.name }}</option>
+                            <option value="{{ project.id }}" {% if selected_project|stringformat:"s" == project.id|stringformat:"s" %}selected{% endif %}>{{ project|project_filter_label }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <label class="form-label">لایه</label>
+                    <select name="layer" id="layer-filter" class="form-select">
+                        <option value="">همه لایه‌ها</option>
+                        {% for layer in layers %}
+                            <option value="{{ layer.code }}" {% if selected_layer == layer.code %}selected{% endif %}>{{ layer.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
                     <label class="form-label">نوع آزمایش</label>
-                    <select name="subtype" class="form-select">
+                    <select name="subtype" id="subtype-filter" class="form-select">
                         <option value="">همه نوع‌ها</option>
                         {% for subtype in subtypes %}
-                            <option value="{{ subtype.id }}" {% if selected_subtype|stringformat:"s" == subtype.id|stringformat:"s" %}selected{% endif %}>{{ subtype.experiment_type.name }} - {{ subtype.name }}</option>
+                            <option value="{{ subtype.id }}" {% if selected_subtype|stringformat:"s" == subtype.id|stringformat:"s" %}selected{% endif %}>
+                                {{ subtype.experiment_type.name }} - {{ subtype.name }}
+                            </option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label class="form-label">از تاریخ</label>
-                    <input type="text" name="date_from" class="form-control" value="{{ date_from }}" placeholder="YYYY/MM/DD">
+                    <input type="text" name="date_from" class="jalali_date-input form-control" value="{{ date_from }}" placeholder="1403/01/01" autocomplete="off">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label class="form-label">تا تاریخ</label>
-                    <input type="text" name="date_to" class="form-control" value="{{ date_to }}" placeholder="YYYY/MM/DD">
+                    <input type="text" name="date_to" class="jalali_date-input form-control" value="{{ date_to }}" placeholder="1403/12/29" autocomplete="off">
                 </div>
                 <div class="col-md-12 text-end">
                     <button type="submit" class="btn btn-primary">جستجو</button>
+                    <a href="{% url 'experiment:experiment_results_charts' %}" class="btn btn-outline-secondary">پاکسازی</a>
                 </div>
             </form>
         </div>
@@ -50,7 +70,7 @@
 
     <div class="row gy-4">
         <div class="col-lg-6">
-            <div class="card">
+            <div class="card chart-card">
                 <div class="card-header">Control Xbar-S</div>
                 <div class="card-body">
                     <canvas id="xbarSChart"></canvas>
@@ -58,7 +78,7 @@
             </div>
         </div>
         <div class="col-lg-6">
-            <div class="card">
+            <div class="card chart-card">
                 <div class="card-header">Control Xbar-R</div>
                 <div class="card-body">
                     <canvas id="xbarRChart"></canvas>
@@ -66,7 +86,7 @@
             </div>
         </div>
         <div class="col-lg-6">
-            <div class="card">
+            <div class="card chart-card">
                 <div class="card-header">هیستگرام</div>
                 <div class="card-body">
                     <canvas id="histogramChart"></canvas>
@@ -74,7 +94,7 @@
             </div>
         </div>
         <div class="col-lg-6">
-            <div class="card">
+            <div class="card chart-card">
                 <div class="card-header">نمودار پراکندگی</div>
                 <div class="card-body">
                     <canvas id="scatterChart"></canvas>
@@ -89,14 +109,14 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block script %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/chart.js' %}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'"></script>
 <script>
     const chartData = {{ chart_data|safe }};
     const allResponses = {{ all_responses|safe }};
+    const allSubtypes = {{ all_subtypes_json|safe }};
 
     function buildLineChart(ctx, label, data, color) {
         return new Chart(ctx, {
@@ -111,13 +131,19 @@
                     fill: false,
                     tension: 0.2,
                     pointRadius: 4,
-                    pointHoverRadius: 6
+                    pointHoverRadius: 6,
+                    spanGaps: true,
                 }]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true },
+                },
                 scales: {
-                    y: { beginAtZero: true }
+                    x: { display: true, title: { display: true, text: 'ماه' } },
+                    y: { beginAtZero: true, display: true, title: { display: true, text: 'مقدار' } }
                 }
             }
         });
@@ -143,8 +169,10 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true }
+                    x: { display: true },
+                    y: { beginAtZero: true, display: true }
                 }
             }
         });
@@ -170,29 +198,82 @@
 
         Object.values(projectMap).forEach(dataset => datasets.push(dataset));
 
+        if (!datasets.length) {
+            datasets.push({
+                label: 'بدون داده',
+                data: [],
+                backgroundColor: 'rgba(200, 200, 200, 0.5)',
+            });
+        }
+
         return new Chart(ctx, {
             type: 'scatter',
             data: { datasets },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
-                    x: { title: { display: true, text: 'تراکم' } },
-                    y: { title: { display: true, text: 'مقاومت' } }
+                    x: { display: true, title: { display: true, text: 'تراکم' }, beginAtZero: true },
+                    y: { display: true, title: { display: true, text: 'مقاومت' }, beginAtZero: true }
                 }
             }
         });
     }
 
+    function refreshSubtypeOptions() {
+        const layerSelect = document.getElementById('layer-filter');
+        const subtypeSelect = document.getElementById('subtype-filter');
+        if (!layerSelect || !subtypeSelect) return;
+
+        const selectedLayer = layerSelect.value;
+        const currentValue = subtypeSelect.value;
+
+        subtypeSelect.innerHTML = '<option value="">همه نوع‌ها</option>';
+
+        const filtered = selectedLayer
+            ? allSubtypes.filter(item => item.layer === selectedLayer)
+            : allSubtypes;
+
+        filtered.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = `${item.type} - ${item.name}`;
+            if (String(item.id) === String(currentValue)) {
+                option.selected = true;
+            }
+            subtypeSelect.appendChild(option);
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        refreshSubtypeOptions();
+
+        const layerFilter = document.getElementById('layer-filter');
+        if (layerFilter) {
+            layerFilter.addEventListener('change', refreshSubtypeOptions);
+        }
+
         const xbarSCtx = document.getElementById('xbarSChart');
         const xbarRCtx = document.getElementById('xbarRChart');
         const histogramCtx = document.getElementById('histogramChart');
         const scatterCtx = document.getElementById('scatterChart');
 
-        if (xbarSCtx) buildLineChart(xbarSCtx, 'Control Xbar-S', chartData.xbar_s, 'rgba(54, 162, 235, 1)');
-        if (xbarRCtx) buildLineChart(xbarRCtx, 'Control Xbar-R', chartData.xbar_r, 'rgba(75, 192, 192, 1)');
-        if (histogramCtx) buildBarChart(histogramCtx);
-        if (scatterCtx) buildScatterChart(scatterCtx);
+        if (typeof Chart !== 'undefined') {
+            if (xbarSCtx) buildLineChart(xbarSCtx, 'Control Xbar-S', chartData.xbar_s, 'rgba(54, 162, 235, 1)');
+            if (xbarRCtx) buildLineChart(xbarRCtx, 'Control Xbar-R', chartData.xbar_r, 'rgba(75, 192, 192, 1)');
+            if (histogramCtx) buildBarChart(histogramCtx);
+            if (scatterCtx) buildScatterChart(scatterCtx);
+        } else {
+            console.error('Chart.js failed to load');
+            document.querySelectorAll('.chart-card .card-body').forEach(function (el) {
+                if (!el.querySelector('.chart-fallback-msg')) {
+                    const msg = document.createElement('p');
+                    msg.className = 'text-muted text-center chart-fallback-msg mt-5';
+                    msg.textContent = 'نمودار در دسترس نیست — داده‌ای برای نمایش وجود ندارد.';
+                    el.appendChild(msg);
+                }
+            });
+        }
     });
 </script>
 {% endblock %}
