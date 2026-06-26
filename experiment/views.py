@@ -1033,13 +1033,12 @@ def experiment_results_charts(request):
     )
     from experiment.chart_utils import (
         EXPERIMENT_RESULT_LAYERS,
-        get_subtypes_for_layer,
-        get_all_chart_subtypes,
         filter_responses_by_layer,
         filter_responses_to_chart_layers,
         build_empty_chart_data,
+        build_chart_data_from_responses,
+        build_scatter_points,
     )
-    from collections import defaultdict
     import json
 
     empty_chart = json.dumps(build_empty_chart_data(), ensure_ascii=False)
@@ -1051,11 +1050,8 @@ def experiment_results_charts(request):
 
         project_id = request.GET.get('project', '').strip()
         layer_code = request.GET.get('layer', '').strip()
-        subtype_id = request.GET.get('subtype', '').strip()
         date_from = request.GET.get('date_from', '').strip()
         date_to = request.GET.get('date_to', '').strip()
-
-        subtypes = get_subtypes_for_layer(layer_code) if layer_code else get_all_chart_subtypes()
 
         responses = models.ExperimentResponse.objects.filter(
             experiment_request__project__in=accessible
@@ -1064,7 +1060,10 @@ def experiment_results_charts(request):
             'experiment_request__project',
             'experiment_request__layer',
             'experiment_request__layer__layer_type',
-        ).prefetch_related('experiment_request__experiment_subtype')
+        ).prefetch_related(
+            'experiment_request__experiment_subtype',
+            'experiment_request__experiment_type',
+        )
 
         responses = filter_queryset_by_nested_project(responses, project_id, user)
         responses = filter_responses_to_chart_layers(responses)
@@ -1072,118 +1071,47 @@ def experiment_results_charts(request):
         if layer_code:
             responses = filter_responses_by_layer(responses, layer_code)
 
-        if subtype_id:
-            try:
-                subtype_id_int = int(subtype_id)
-                if layer_code:
-                    allowed_ids = set(
-                        get_subtypes_for_layer(layer_code).values_list('id', flat=True)
-                    )
-                    if subtype_id_int not in allowed_ids:
-                        subtype_id_int = None
-                if subtype_id_int:
-                    responses = responses.filter(
-                        experiment_request__experiment_subtype__id=subtype_id_int
-                    ).distinct()
-            except (ValueError, TypeError):
-                pass
-
         g_date_from = parse_jalali_date_string(date_from)
         g_date_to = parse_jalali_date_string(date_to)
         if g_date_from:
-            responses = responses.filter(response_date__gte=g_date_from)
+            responses = responses.filter(
+                models.Q(response_date__gte=g_date_from)
+                | models.Q(
+                    response_date__isnull=True,
+                    experiment_request__request_date__gte=g_date_from,
+                )
+            )
         if g_date_to:
-            responses = responses.filter(response_date__lte=g_date_to)
+            responses = responses.filter(
+                models.Q(response_date__lte=g_date_to)
+                | models.Q(
+                    response_date__isnull=True,
+                    experiment_request__request_date__lte=g_date_to,
+                )
+            )
 
-        chart_data = {
-            'months': [],
-            'xbar_s': [],
-            'xbar_r': [],
-            'density': [],
-            'strength': [],
-        }
+        response_list = list(responses)
+        chart_data = build_chart_data_from_responses(response_list)
+        all_responses = build_scatter_points(response_list)
 
-        monthly_data = defaultdict(lambda: {'density': [], 'strength': [], 'count': 0})
-
-        for resp in responses:
-            try:
-                if not resp.response_date:
-                    continue
-                month_key = str(resp.response_date).replace('/', '-')[:7]
-                if len(month_key) < 7:
-                    month_key = str(resp.response_date)[:7]
-
-                if resp.density_result is not None:
-                    monthly_data[month_key]['density'].append(float(resp.density_result))
-                if resp.strength_result1 is not None:
-                    monthly_data[month_key]['strength'].append(float(resp.strength_result1))
-                if resp.strength_result2 is not None:
-                    monthly_data[month_key]['strength'].append(float(resp.strength_result2))
-                if resp.strength_result3 is not None:
-                    monthly_data[month_key]['strength'].append(float(resp.strength_result3))
-
-                monthly_data[month_key]['count'] += 1
-            except (TypeError, ValueError):
-                continue
-
-        for month in sorted(monthly_data.keys()):
-            data = monthly_data[month]
-            chart_data['months'].append(month)
-
-            if data['density']:
-                chart_data['xbar_s'].append(sum(data['density']) / len(data['density']))
-            else:
-                chart_data['xbar_s'].append(None)
-
-            if data['strength']:
-                chart_data['xbar_r'].append(sum(data['strength']) / len(data['strength']))
-            else:
-                chart_data['xbar_r'].append(None)
-
-            chart_data['density'].append(len(data['density']))
-            chart_data['strength'].append(len(data['strength']))
-
-        if not chart_data['months']:
-            chart_data = build_empty_chart_data()
-
-        all_responses = []
-        for resp in responses:
-            try:
-                all_responses.append({
-                    'project': resp.experiment_request.project.name,
-                    'date': str(resp.response_date),
-                    'density': float(resp.density_result) if resp.density_result is not None else None,
-                    'strength': float(resp.strength_result1) if resp.strength_result1 is not None else None,
-                })
-            except (TypeError, ValueError, AttributeError):
-                continue
-
-        total_responses = len(all_responses)
+        layer_label = ''
+        if layer_code:
+            for item in EXPERIMENT_RESULT_LAYERS:
+                if item['code'] == layer_code:
+                    layer_label = item['label']
+                    break
 
         context = {
             'projects': projects,
             'layers': EXPERIMENT_RESULT_LAYERS,
-            'subtypes': subtypes,
-            'all_subtypes_json': json.dumps([
-                {
-                    'id': s.id,
-                    'name': s.name,
-                    'type': s.experiment_type.name,
-                    'layer': next(
-                        (item['code'] for item in EXPERIMENT_RESULT_LAYERS if s.name in item['subtype_names']),
-                        ''
-                    ),
-                }
-                for s in get_all_chart_subtypes()
-            ], ensure_ascii=False),
             'selected_project': project_id,
             'selected_layer': layer_code,
-            'selected_subtype': subtype_id,
+            'selected_layer_label': layer_label,
             'date_from': date_from,
             'date_to': date_to,
             'chart_data': json.dumps(chart_data, ensure_ascii=False),
             'all_responses': json.dumps(all_responses, ensure_ascii=False),
-            'total_responses': total_responses,
+            'total_responses': len(response_list),
         }
     except Exception as e:
         logger.exception('Error in experiment_results_charts: %s', e)
@@ -1191,11 +1119,9 @@ def experiment_results_charts(request):
         context = {
             'projects': get_filter_projects(request.user),
             'layers': EXPERIMENT_RESULT_LAYERS,
-            'subtypes': get_all_chart_subtypes(),
-            'all_subtypes_json': '[]',
             'selected_project': '',
             'selected_layer': '',
-            'selected_subtype': '',
+            'selected_layer_label': '',
             'date_from': '',
             'date_to': '',
             'chart_data': empty_chart,

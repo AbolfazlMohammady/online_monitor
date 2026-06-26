@@ -1,49 +1,38 @@
-"""Helpers for experiment results charts: layer filters and date parsing."""
+"""Helpers for experiment results charts: layer filters and chart aggregation."""
 
 from django.db.models import Q
-
-from experiment.models import ExperimentSubType
 
 EXPERIMENT_RESULT_LAYERS = [
     {
         'code': 'embankment',
         'label': 'خاکریزی',
-        'layer_keywords': ['خاکریزی', 'خاک ریز'],
-        'subtype_names': ['بستر', 'راکفیل', 'خاکریزی'],
+        'layer_keywords': ['خاکریزی', 'خاک ریز', 'خاکریز'],
     },
     {
         'code': 'subgrade',
         'label': 'سابگرید',
         'layer_keywords': ['سابگرید', 'سابگریت'],
-        'subtype_names': ['سابگرید'],
     },
     {
         'code': 'subbase',
         'label': 'زیر اساس',
         'layer_keywords': ['زیر اساس', 'زیراساس'],
-        'subtype_names': ['زیراساس', 'VSS'],
     },
     {
         'code': 'base',
         'label': 'اساس',
         'layer_keywords': ['اساس'],
-        'subtype_names': ['اساس'],
         'exclude_layer_keywords': ['زیر'],
     },
     {
         'code': 'asphalt',
         'label': 'آسفالت',
         'layer_keywords': ['آسفالت'],
-        'subtype_names': ['بیندر', 'توپکا', 'پریمکت', 'تک کت'],
     },
     {
         'code': 'concrete',
         'label': 'بتن ریزی',
-        'layer_keywords': ['بتن'],
-        'subtype_names': [
-            'B_100', 'B_200', 'B_250', 'B_300', 'B_350', 'B_400',
-            'C_8', 'C_16', 'C_20', 'C_24', 'C_28', 'C_32', 'ملات بنایی',
-        ],
+        'layer_keywords': ['بتن', 'مگر'],
     },
 ]
 
@@ -57,46 +46,8 @@ def get_layer_filter_config(layer_code):
     return None
 
 
-def get_subtypes_for_layer(layer_code):
-    config = get_layer_filter_config(layer_code)
-    if not config:
-        return ExperimentSubType.objects.none()
-    return ExperimentSubType.objects.filter(
-        name__in=config['subtype_names']
-    ).select_related('experiment_type').order_by('experiment_type__name', 'name')
-
-
-def get_all_chart_subtypes():
-    all_names = []
-    for item in EXPERIMENT_RESULT_LAYERS:
-        all_names.extend(item['subtype_names'])
-    return ExperimentSubType.objects.filter(
-        name__in=all_names
-    ).select_related('experiment_type').order_by('experiment_type__name', 'name')
-
-
-def filter_responses_to_chart_layers(queryset):
-    """Keep only responses related to the six chart layer categories."""
-    combined = Q()
-    for item in EXPERIMENT_RESULT_LAYERS:
-        layer_q = Q()
-        for keyword in item['layer_keywords']:
-            if keyword == 'اساس':
-                layer_q |= Q(
-                    experiment_request__layer__layer_type__name__icontains='اساس'
-                ) & ~Q(experiment_request__layer__layer_type__name__icontains='زیر')
-            else:
-                layer_q |= Q(experiment_request__layer__layer_type__name__icontains=keyword)
-        subtype_q = Q(experiment_request__experiment_subtype__name__in=item['subtype_names'])
-        combined |= layer_q | subtype_q
-    return queryset.filter(combined).distinct()
-
-
-def filter_responses_by_layer(queryset, layer_code):
-    config = get_layer_filter_config(layer_code)
-    if not config:
-        return queryset
-
+def _layer_type_q_for_config(config):
+    """Match experiment requests by project layer type (all tests on that layer)."""
     layer_q = Q()
     for keyword in config['layer_keywords']:
         if keyword == 'اساس':
@@ -106,8 +57,64 @@ def filter_responses_by_layer(queryset, layer_code):
         else:
             layer_q |= Q(experiment_request__layer__layer_type__name__icontains=keyword)
 
-    subtype_q = Q(experiment_request__experiment_subtype__name__in=config['subtype_names'])
-    return queryset.filter(layer_q | subtype_q).distinct()
+    if config.get('code') == 'concrete':
+        layer_q |= Q(experiment_request__experiment_type__name__icontains='مقاومت فشاری بتن')
+        layer_q |= Q(experiment_request__experiment_type__name__icontains='بتن')
+
+    return layer_q
+
+
+def filter_responses_to_chart_layers(queryset):
+    """Keep only responses for the six chart layer categories (by request layer)."""
+    combined = Q()
+    for item in EXPERIMENT_RESULT_LAYERS:
+        combined |= _layer_type_q_for_config(item)
+    return queryset.filter(combined).distinct()
+
+
+def filter_responses_by_layer(queryset, layer_code):
+    """Filter responses for one layer — includes every test registered on that layer."""
+    config = get_layer_filter_config(layer_code)
+    if not config:
+        return queryset
+    return queryset.filter(_layer_type_q_for_config(config)).distinct()
+
+
+def get_response_month_key(resp):
+    """Month key for charts; falls back when response_date is empty."""
+    date_val = resp.response_date
+    if not date_val:
+        date_val = getattr(resp.experiment_request, 'request_date', None)
+    if not date_val and resp.created_at:
+        date_val = resp.created_at
+
+    if not date_val:
+        return None
+
+    text = str(date_val).strip().replace('/', '-')
+    if ' ' in text:
+        text = text.split(' ')[0]
+    if 'T' in text:
+        text = text.split('T')[0]
+    return text[:7] if len(text) >= 7 else text
+
+
+def extract_density_value(resp):
+    if resp.density_result is not None:
+        return float(resp.density_result)
+    return None
+
+
+def extract_strength_values(resp):
+    values = []
+    if resp.strength_average is not None:
+        values.append(float(resp.strength_average))
+    else:
+        for field in ('strength_result1', 'strength_result2', 'strength_result3'):
+            val = getattr(resp, field, None)
+            if val is not None:
+                values.append(float(val))
+    return values
 
 
 def build_empty_chart_data():
@@ -118,3 +125,76 @@ def build_empty_chart_data():
         'density': [0],
         'strength': [0],
     }
+
+
+def build_chart_data_from_responses(responses):
+    """Aggregate monthly series for line/bar charts."""
+    from collections import defaultdict
+
+    monthly_data = defaultdict(lambda: {'density': [], 'strength': []})
+
+    for resp in responses:
+        month_key = get_response_month_key(resp)
+        if not month_key:
+            continue
+
+        density = extract_density_value(resp)
+        if density is not None:
+            monthly_data[month_key]['density'].append(density)
+
+        strength_values = extract_strength_values(resp)
+        if strength_values:
+            monthly_data[month_key]['strength'].extend(strength_values)
+
+    chart_data = {
+        'months': [],
+        'xbar_s': [],
+        'xbar_r': [],
+        'density': [],
+        'strength': [],
+    }
+
+    for month in sorted(monthly_data.keys()):
+        data = monthly_data[month]
+        chart_data['months'].append(month)
+
+        if data['density']:
+            avg_density = sum(data['density']) / len(data['density'])
+            chart_data['xbar_s'].append(round(avg_density, 3))
+            chart_data['density'].append(round(avg_density, 3))
+        else:
+            chart_data['xbar_s'].append(None)
+            chart_data['density'].append(None)
+
+        if data['strength']:
+            avg_strength = sum(data['strength']) / len(data['strength'])
+            chart_data['xbar_r'].append(round(avg_strength, 3))
+            chart_data['strength'].append(round(avg_strength, 3))
+        else:
+            chart_data['xbar_r'].append(None)
+            chart_data['strength'].append(None)
+
+    if not chart_data['months']:
+        return build_empty_chart_data()
+
+    return chart_data
+
+
+def build_scatter_points(responses):
+    points = []
+    for resp in responses:
+        density = extract_density_value(resp)
+        strength_values = extract_strength_values(resp)
+        strength = strength_values[0] if strength_values else None
+        if density is None or strength is None:
+            continue
+        try:
+            points.append({
+                'project': resp.experiment_request.project.name,
+                'date': str(resp.response_date or resp.experiment_request.request_date or ''),
+                'density': density,
+                'strength': strength,
+            })
+        except (TypeError, ValueError, AttributeError):
+            continue
+    return points

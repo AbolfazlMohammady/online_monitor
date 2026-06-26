@@ -16,14 +16,17 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2>نتایج آزمایشات</h2>
-            <p class="text-muted">نمایش نمودارهای تحلیلی با فیلتر بر اساس پروژه، لایه، نوع آزمایش و بازه زمانی.</p>
+            <p class="text-muted">
+                با انتخاب لایه (مثلاً خاکریزی)، تمام آزمایش‌های ثبت‌شده روی همان لایه در درخواست آزمایش
+                (تراکم، دانه‌بندی، مقاومت و …) در نمودارها لحاظ می‌شوند.
+            </p>
         </div>
     </div>
 
     <div class="card mb-4">
         <div class="card-body">
             <form method="get" class="row g-3" id="results-filter-form">
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label">پروژه</label>
                     <select name="project" class="form-select">
                         <option value="">همه پروژه‌ها</option>
@@ -32,7 +35,7 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label">لایه</label>
                     <select name="layer" id="layer-filter" class="form-select">
                         <option value="">همه لایه‌ها</option>
@@ -40,23 +43,13 @@
                             <option value="{{ layer.code }}" {% if selected_layer == layer.code %}selected{% endif %}>{{ layer.label }}</option>
                         {% endfor %}
                     </select>
+                    <small class="text-muted">همه نوع آزمایش‌های همان لایه به‌صورت خودکار جمع می‌شوند.</small>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label">نوع آزمایش</label>
-                    <select name="subtype" id="subtype-filter" class="form-select">
-                        <option value="">همه نوع‌ها</option>
-                        {% for subtype in subtypes %}
-                            <option value="{{ subtype.id }}" {% if selected_subtype|stringformat:"s" == subtype.id|stringformat:"s" %}selected{% endif %}>
-                                {{ subtype.experiment_type.name }} - {{ subtype.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label">از تاریخ</label>
                     <input type="text" name="date_from" class="jalali_date-input form-control" value="{{ date_from }}" placeholder="1403/01/01" autocomplete="off">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label">تا تاریخ</label>
                     <input type="text" name="date_to" class="jalali_date-input form-control" value="{{ date_to }}" placeholder="1403/12/29" autocomplete="off">
                 </div>
@@ -68,10 +61,17 @@
         </div>
     </div>
 
+    {% if selected_layer_label %}
+    <div class="alert alert-secondary mb-4">
+        لایه انتخاب‌شده: <strong>{{ selected_layer_label }}</strong>
+        — شامل همه آزمایش‌های مرتبط با این لایه در درخواست‌های آزمایش
+    </div>
+    {% endif %}
+
     <div class="row gy-4">
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header">Control Xbar-S</div>
+                <div class="card-header">Control Xbar-S <small class="text-muted">(میانگین تراکم)</small></div>
                 <div class="card-body">
                     <canvas id="xbarSChart"></canvas>
                 </div>
@@ -79,7 +79,7 @@
         </div>
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header">Control Xbar-R</div>
+                <div class="card-header">Control Xbar-R <small class="text-muted">(میانگین مقاومت)</small></div>
                 <div class="card-body">
                     <canvas id="xbarRChart"></canvas>
                 </div>
@@ -87,7 +87,7 @@
         </div>
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header">هیستگرام</div>
+                <div class="card-header">هیستگرام <small class="text-muted">(میانگین ماهانه)</small></div>
                 <div class="card-body">
                     <canvas id="histogramChart"></canvas>
                 </div>
@@ -116,7 +116,10 @@
 <script>
     const chartData = {{ chart_data|safe }};
     const allResponses = {{ all_responses|safe }};
-    const allSubtypes = {{ all_subtypes_json|safe }};
+
+    function hasNumericData(arr) {
+        return Array.isArray(arr) && arr.some(v => v !== null && v !== undefined && !Number.isNaN(Number(v)));
+    }
 
     function buildLineChart(ctx, label, data, color) {
         return new Chart(ctx, {
@@ -130,20 +133,18 @@
                     backgroundColor: color,
                     fill: false,
                     tension: 0.2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
                     spanGaps: true,
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: true },
-                },
+                plugins: { legend: { display: true } },
                 scales: {
                     x: { display: true, title: { display: true, text: 'ماه' } },
-                    y: { beginAtZero: true, display: true, title: { display: true, text: 'مقدار' } }
+                    y: { beginAtZero: false, display: true, title: { display: true, text: 'مقدار' } }
                 }
             }
         });
@@ -156,14 +157,16 @@
                 labels: chartData.months,
                 datasets: [
                     {
-                        label: 'تراکم',
+                        label: 'میانگین تراکم',
                         data: chartData.density,
-                        backgroundColor: 'rgba(54, 162, 235, 0.6)'
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        skipNull: true,
                     },
                     {
-                        label: 'مقاومت',
+                        label: 'میانگین مقاومت',
                         data: chartData.strength,
-                        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        skipNull: true,
                     }
                 ]
             },
@@ -172,7 +175,7 @@
                 maintainAspectRatio: false,
                 scales: {
                     x: { display: true },
-                    y: { beginAtZero: true, display: true }
+                    y: { beginAtZero: false, display: true }
                 }
             }
         });
@@ -213,66 +216,35 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: { display: true, title: { display: true, text: 'تراکم' }, beginAtZero: true },
-                    y: { display: true, title: { display: true, text: 'مقاومت' }, beginAtZero: true }
+                    x: { display: true, title: { display: true, text: 'تراکم' }, beginAtZero: false },
+                    y: { display: true, title: { display: true, text: 'مقاومت' }, beginAtZero: false }
                 }
             }
         });
     }
 
-    function refreshSubtypeOptions() {
-        const layerSelect = document.getElementById('layer-filter');
-        const subtypeSelect = document.getElementById('subtype-filter');
-        if (!layerSelect || !subtypeSelect) return;
-
-        const selectedLayer = layerSelect.value;
-        const currentValue = subtypeSelect.value;
-
-        subtypeSelect.innerHTML = '<option value="">همه نوع‌ها</option>';
-
-        const filtered = selectedLayer
-            ? allSubtypes.filter(item => item.layer === selectedLayer)
-            : allSubtypes;
-
-        filtered.forEach(item => {
-            const option = document.createElement('option');
-            option.value = item.id;
-            option.textContent = `${item.type} - ${item.name}`;
-            if (String(item.id) === String(currentValue)) {
-                option.selected = true;
-            }
-            subtypeSelect.appendChild(option);
-        });
-    }
-
     document.addEventListener('DOMContentLoaded', function () {
-        refreshSubtypeOptions();
-
-        const layerFilter = document.getElementById('layer-filter');
-        if (layerFilter) {
-            layerFilter.addEventListener('change', refreshSubtypeOptions);
-        }
-
         const xbarSCtx = document.getElementById('xbarSChart');
         const xbarRCtx = document.getElementById('xbarRChart');
         const histogramCtx = document.getElementById('histogramChart');
         const scatterCtx = document.getElementById('scatterChart');
 
-        if (typeof Chart !== 'undefined') {
-            if (xbarSCtx) buildLineChart(xbarSCtx, 'Control Xbar-S', chartData.xbar_s, 'rgba(54, 162, 235, 1)');
-            if (xbarRCtx) buildLineChart(xbarRCtx, 'Control Xbar-R', chartData.xbar_r, 'rgba(75, 192, 192, 1)');
-            if (histogramCtx) buildBarChart(histogramCtx);
-            if (scatterCtx) buildScatterChart(scatterCtx);
-        } else {
+        if (typeof Chart === 'undefined') {
             console.error('Chart.js failed to load');
-            document.querySelectorAll('.chart-card .card-body').forEach(function (el) {
-                if (!el.querySelector('.chart-fallback-msg')) {
-                    const msg = document.createElement('p');
-                    msg.className = 'text-muted text-center chart-fallback-msg mt-5';
-                    msg.textContent = 'نمودار در دسترس نیست — داده‌ای برای نمایش وجود ندارد.';
-                    el.appendChild(msg);
-                }
-            });
+            return;
+        }
+
+        if (xbarSCtx && hasNumericData(chartData.xbar_s)) {
+            buildLineChart(xbarSCtx, 'میانگین تراکم', chartData.xbar_s, 'rgba(54, 162, 235, 1)');
+        }
+        if (xbarRCtx && hasNumericData(chartData.xbar_r)) {
+            buildLineChart(xbarRCtx, 'میانگین مقاومت', chartData.xbar_r, 'rgba(75, 192, 192, 1)');
+        }
+        if (histogramCtx && (hasNumericData(chartData.density) || hasNumericData(chartData.strength))) {
+            buildBarChart(histogramCtx);
+        }
+        if (scatterCtx) {
+            buildScatterChart(scatterCtx);
         }
     });
 </script>
