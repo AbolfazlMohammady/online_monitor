@@ -1106,6 +1106,13 @@ def experiment_results_charts(request):
                     layer_label = item['label']
                     break
 
+        metric_summary = ''
+        if statistical_charts.get('has_data'):
+            parts = [statistical_charts.get('primary_label', '')]
+            if statistical_charts.get('secondary_label') and statistical_charts.get('secondary_label') != statistical_charts.get('primary_label'):
+                parts.append(statistical_charts.get('secondary_label'))
+            metric_summary = 'شاخص‌های نمودار: ' + '، '.join(p for p in parts if p)
+
         context = {
             'projects': projects,
             'layers': EXPERIMENT_RESULT_LAYERS,
@@ -1117,6 +1124,7 @@ def experiment_results_charts(request):
             'has_active_filters': has_active_filters,
             'statistical_charts': json.dumps(statistical_charts, ensure_ascii=False),
             'total_responses': len(response_list),
+            'metric_summary': metric_summary,
         }
     except Exception as e:
         logger.exception('Error in experiment_results_charts: %s', e)
@@ -1139,6 +1147,7 @@ def experiment_results_charts(request):
             'has_active_filters': any([project_id, layer_code, date_from, date_to]),
             'statistical_charts': empty_charts,
             'total_responses': 0,
+            'metric_summary': '',
         }
 
     return render(request, 'experiment/experiment_results_charts.html', context)

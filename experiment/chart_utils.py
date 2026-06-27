@@ -1,5 +1,7 @@
 """Helpers for experiment results charts: layer filters and chart aggregation."""
 
+from collections import defaultdict
+
 from django.db.models import Q
 
 EXPERIMENT_RESULT_LAYERS = [
@@ -35,6 +37,12 @@ EXPERIMENT_RESULT_LAYERS = [
         'layer_keywords': ['بتن', 'مگر'],
     },
 ]
+
+METRIC_FIELDS = (
+    ('density', 'تراکم', 'density_result'),
+    ('strength', 'مقاومت فشاری', None),
+    ('thickness', 'ضخامت', 'thickness_result'),
+)
 
 
 def get_layer_filter_config(layer_code):
@@ -132,82 +140,177 @@ def get_response_sort_key(resp):
     return str(date_val or '')
 
 
-def _sorted_values(responses, extractor):
-    """Collect numeric values from responses, sorted chronologically."""
+def _metric_value(resp, metric_key):
+    if metric_key == 'density':
+        return extract_density_value(resp)
+    if metric_key == 'thickness':
+        return extract_thickness_value(resp)
+    if metric_key == 'strength':
+        values = extract_strength_values(resp)
+        return values[0] if values else None
+    return None
+
+
+def _metric_values_list(resp, metric_key):
+    if metric_key == 'strength':
+        return extract_strength_values(resp)
+    value = _metric_value(resp, metric_key)
+    return [value] if value is not None else []
+
+
+def _sorted_values(responses, metric_key):
+    """Collect numeric values for a metric from responses, sorted chronologically."""
     pairs = []
     for resp in responses:
-        if extractor is extract_strength_values:
-            for value in extract_strength_values(resp):
-                pairs.append((get_response_sort_key(resp), value))
-        else:
-            value = extractor(resp)
-            if value is not None:
-                pairs.append((get_response_sort_key(resp), value))
+        for value in _metric_values_list(resp, metric_key):
+            pairs.append((get_response_sort_key(resp), value))
     pairs.sort(key=lambda item: item[0])
     return [value for _, value in pairs]
 
 
+def _metric_label(metric_key):
+    for key, label, _field in METRIC_FIELDS:
+        if key == metric_key:
+            return label
+    return 'مقدار'
+
+
+def resolve_layer_metrics(responses):
+    """
+    Pick primary/secondary metrics from whatever test results exist
+    in the filtered responses (not hardcoded per layer type).
+    """
+    counts = {}
+    for key, _label, _field in METRIC_FIELDS:
+        total = 0
+        for resp in responses:
+            total += len(_metric_values_list(resp, key))
+        counts[key] = total
+
+    available = [(key, count) for key, count in counts.items() if count > 0]
+    if not available:
+        return None, None
+
+    available.sort(key=lambda item: (-item[1], item[0]))
+    primary_key = available[0][0]
+    secondary_key = available[1][0] if len(available) > 1 else None
+    return primary_key, secondary_key
+
+
 def build_empty_statistical_charts():
     return {
+        'has_data': False,
+        'primary_label': 'مقدار',
+        'secondary_label': 'مقدار',
         'xbar_s': None,
         'xbar_r': None,
         'histogram': None,
         'scatter': [],
-        'scatter_y_label': 'مقاومت',
+        'scatter_x_label': 'محور X',
+        'scatter_y_label': 'محور Y',
     }
+
+
+def build_monthly_bar_chart(responses, primary_key, secondary_key=None):
+    """Monthly averages for bar/histogram-style chart."""
+    monthly = defaultdict(lambda: defaultdict(list))
+
+    for resp in responses:
+        month_key = get_response_month_key(resp)
+        if not month_key:
+            continue
+        for value in _metric_values_list(resp, primary_key):
+            monthly[month_key][primary_key].append(value)
+        if secondary_key:
+            for value in _metric_values_list(resp, secondary_key):
+                monthly[month_key][secondary_key].append(value)
+
+    if not monthly:
+        return None
+
+    months = sorted(monthly.keys())
+    primary_series = []
+    secondary_series = []
+
+    for month in months:
+        bucket = monthly[month]
+        p_vals = bucket.get(primary_key, [])
+        primary_series.append(
+            round(sum(p_vals) / len(p_vals), 3) if p_vals else None
+        )
+        if secondary_key:
+            s_vals = bucket.get(secondary_key, [])
+            secondary_series.append(
+                round(sum(s_vals) / len(s_vals), 3) if s_vals else None
+            )
+
+    result = {
+        'months': months,
+        'primary': primary_series,
+        'primary_label': _metric_label(primary_key),
+    }
+    if secondary_key:
+        result['secondary'] = secondary_series
+        result['secondary_label'] = _metric_label(secondary_key)
+    return result
+
+
+def build_scatter_points(responses, primary_key, secondary_key):
+    """Scatter using two available metrics from the same filtered responses."""
+    if not primary_key or not secondary_key:
+        return [], _metric_label(primary_key or 'density'), _metric_label(secondary_key or 'strength')
+
+    points = []
+    for resp in responses:
+        x_vals = _metric_values_list(resp, primary_key)
+        y_vals = _metric_values_list(resp, secondary_key)
+        if not x_vals or not y_vals:
+            continue
+        try:
+            project_name = resp.experiment_request.project.name
+        except (AttributeError, TypeError):
+            project_name = 'نامشخص'
+
+        x_val = x_vals[0]
+        y_val = y_vals[0]
+        points.append({
+            'project': project_name,
+            'date': str(resp.response_date or resp.experiment_request.request_date or ''),
+            'x': x_val,
+            'y': y_val,
+        })
+
+    return points, _metric_label(primary_key), _metric_label(secondary_key)
 
 
 def build_statistical_charts_from_responses(responses):
-    """Build SPC control charts, histogram, and scatter from filtered responses."""
-    from core.chart_stats import build_xbar_s_chart, build_xbar_r_chart, histogram_from_values
+    """
+    Build all four charts from filtered layer responses.
+    Primary metric drives Xbar-S, Xbar-R, and histogram;
+    scatter uses primary vs secondary metric available in data.
+    """
+    from core.chart_stats import build_xbar_s_chart, build_xbar_r_chart
 
-    density_values = _sorted_values(responses, extract_density_value)
-    strength_values = _sorted_values(responses, extract_strength_values)
+    primary_key, secondary_key = resolve_layer_metrics(responses)
+    if not primary_key:
+        return build_empty_statistical_charts()
 
-    scatter_points, scatter_y_label = build_scatter_points(responses)
+    primary_label = _metric_label(primary_key)
+    secondary_label = _metric_label(secondary_key) if secondary_key else primary_label
+    primary_values = _sorted_values(responses, primary_key)
+
+    scatter_points, scatter_x_label, scatter_y_label = build_scatter_points(
+        responses, primary_key, secondary_key
+    )
 
     return {
-        'xbar_s': build_xbar_s_chart(density_values),
-        'xbar_r': build_xbar_r_chart(strength_values),
-        'histogram': histogram_from_values(density_values) if density_values else None,
+        'has_data': bool(primary_values),
+        'primary_label': primary_label,
+        'secondary_label': secondary_label,
+        'xbar_s': build_xbar_s_chart(primary_values),
+        'xbar_r': build_xbar_r_chart(primary_values),
+        'histogram': build_monthly_bar_chart(responses, primary_key, secondary_key),
         'scatter': scatter_points,
+        'scatter_x_label': scatter_x_label,
         'scatter_y_label': scatter_y_label,
     }
-
-
-def build_scatter_points(responses):
-    """Return scatter points and the Y-axis label (strength or thickness)."""
-    points = []
-    y_label = 'مقاومت'
-    use_thickness = False
-
-    for resp in responses:
-        density = extract_density_value(resp)
-        if density is None:
-            continue
-
-        strength_values = extract_strength_values(resp)
-        y_val = strength_values[0] if strength_values else None
-
-        if y_val is None:
-            y_val = extract_thickness_value(resp)
-            if y_val is not None:
-                use_thickness = True
-
-        if y_val is None:
-            continue
-
-        try:
-            points.append({
-                'project': resp.experiment_request.project.name,
-                'date': str(resp.response_date or resp.experiment_request.request_date or ''),
-                'density': density,
-                'y': y_val,
-            })
-        except (TypeError, ValueError, AttributeError):
-            continue
-
-    if use_thickness and not any(extract_strength_values(r) for r in responses):
-        y_label = 'ضخامت'
-
-    return points, y_label

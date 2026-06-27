@@ -6,7 +6,6 @@
 
 {% block head %}
 <style>
-  /* Override global .chart-card (align-items:center shrinks charts to tiny boxes) */
   .experiment-results-charts .chart-card {
     align-items: stretch !important;
     margin: 0 !important;
@@ -29,7 +28,7 @@
   }
 
   .experiment-results-charts .chart-card .card-body.card-body-single {
-    min-height: 360px;
+    min-height: 420px;
   }
 
   .experiment-results-charts .control-chart-stack {
@@ -73,12 +72,9 @@
   .experiment-results-charts .chart-empty-msg {
     color: #888;
     text-align: center;
-    padding: 2rem 1rem;
-    font-size: 0.9rem;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 1rem;
+    font-size: 0.85rem;
+    flex-shrink: 0;
   }
 </style>
 {% endblock %}
@@ -143,12 +139,12 @@
     <div class="row gy-4">
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Control Xbar-S — تراکم</span>
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span id="xbarSTitle">Control Xbar-S</span>
                     <small class="text-muted" id="xbarSStats"></small>
                 </div>
                 <div class="card-body">
-                    <div id="xbarSEmpty" class="chart-empty-msg d-none">داده تراکم کافی برای رسم نمودار کنترل وجود ندارد.</div>
+                    <p id="xbarSNote" class="chart-empty-msg {% if has_active_filters %}d-none{% endif %}">فیلتر را انتخاب کنید تا داده روی نمودار نمایش داده شود.</p>
                     <div class="control-chart-stack" id="xbarSCharts">
                         <div class="control-chart-sub">
                             <div class="control-chart-subtitle">میانگین نمونه (X̄)</div>
@@ -168,12 +164,12 @@
         </div>
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Control Xbar-R — مقاومت فشاری</span>
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span id="xbarRTitle">Control Xbar-R</span>
                     <small class="text-muted" id="xbarRStats"></small>
                 </div>
                 <div class="card-body">
-                    <div id="xbarREmpty" class="chart-empty-msg d-none">داده مقاومت فشاری ثبت نشده است. برای لایه‌های بتن، نتایج مقاومت ۱/۲/۳ را وارد کنید.</div>
+                    <p id="xbarRNote" class="chart-empty-msg {% if has_active_filters %}d-none{% endif %}">فیلتر را انتخاب کنید تا داده روی نمودار نمایش داده شود.</p>
                     <div class="control-chart-stack" id="xbarRCharts">
                         <div class="control-chart-sub">
                             <div class="control-chart-subtitle">میانگین نمونه (X̄)</div>
@@ -193,12 +189,12 @@
         </div>
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>هیستوگرام — توزیع تراکم</span>
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span id="histogramTitle">هیستوگرام</span>
                     <small class="text-muted" id="histogramStats"></small>
                 </div>
                 <div class="card-body card-body-single">
-                    <div id="histogramEmpty" class="chart-empty-msg d-none">داده تراکم برای هیستوگرام وجود ندارد.</div>
+                    <p id="histogramNote" class="chart-empty-msg {% if has_active_filters %}d-none{% endif %}">فیلتر را انتخاب کنید تا داده روی نمودار نمایش داده شود.</p>
                     <div class="control-chart-container">
                         <canvas id="histogramChart"></canvas>
                     </div>
@@ -207,10 +203,10 @@
         </div>
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header">نمودار پراکندگی</div>
-                <div class="card-body">
-                    <div id="scatterEmpty" class="chart-empty-msg d-none">داده کافی برای نمودار پراکندگی وجود ندارد.</div>
-                    <div class="control-chart-container control-chart-container-lg">
+                <div class="card-header" id="scatterTitle">نمودار پراکندگی</div>
+                <div class="card-body card-body-single">
+                    <p id="scatterNote" class="chart-empty-msg {% if has_active_filters %}d-none{% endif %}">فیلتر را انتخاب کنید تا داده روی نمودار نمایش داده شود.</p>
+                    <div class="control-chart-container">
                         <canvas id="scatterChart"></canvas>
                     </div>
                 </div>
@@ -221,11 +217,12 @@
     <div class="mt-4">
         {% if not has_active_filters %}
         <div class="alert alert-secondary">
-            برای مشاهده نمودارها، پروژه، لایه یا بازه تاریخ را انتخاب کنید و دکمه جستجو را بزنید.
+            برای مشاهده داده در نمودارها، پروژه، لایه یا بازه تاریخ را انتخاب کنید و دکمه جستجو را بزنید.
         </div>
         {% else %}
         <div class="alert alert-info">
             تعداد پاسخ‌های یافت‌شده: <strong>{{ total_responses }}</strong>
+            {% if metric_summary %} — {{ metric_summary }}{% endif %}
         </div>
         {% endif %}
     </div>
@@ -236,181 +233,169 @@
 <script src="{% static 'js/chart.js' %}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'"></script>
 <script>
     const statisticalCharts = {{ statistical_charts|safe }};
+    const chartInstances = {};
+
+    const SKELETON_LABELS = ['1', '2', '3', '4', '5'];
 
     function formatStats(stats) {
         if (!stats) return '';
         return 'Mean: ' + stats.mean + ' | StDev: ' + stats.stdev + ' | N: ' + stats.n;
     }
 
-    function showEmpty(emptyId, chartsId) {
-        const emptyEl = document.getElementById(emptyId);
-        const chartsEl = document.getElementById(chartsId);
-        if (emptyEl) emptyEl.classList.remove('d-none');
-        if (chartsEl) chartsEl.classList.add('d-none');
-    }
-
-    function createControlLineChart(canvasId, labels, values, limits, yTitle) {
-        const ctx = document.getElementById(canvasId);
-        if (!ctx || !values) return;
-
-        const uclData = labels.map(function() { return limits.ucl; });
-        const clData = labels.map(function() { return limits.cl; });
-        const lclData = labels.map(function() { return limits.lcl; });
-
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'UCL',
-                        data: uclData,
-                        borderColor: 'rgba(211, 47, 47, 0.9)',
-                        borderWidth: 2,
-                        borderDash: [6, 4],
-                        pointRadius: 0,
-                        fill: false
-                    },
-                    {
-                        label: 'CL',
-                        data: clData,
-                        borderColor: 'rgba(33, 33, 33, 0.85)',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        fill: false
-                    },
-                    {
-                        label: 'LCL',
-                        data: lclData,
-                        borderColor: 'rgba(211, 47, 47, 0.9)',
-                        borderWidth: 2,
-                        borderDash: [6, 4],
-                        pointRadius: 0,
-                        fill: false
-                    },
-                    {
-                        label: yTitle,
-                        data: values,
-                        borderColor: 'rgba(25, 118, 210, 1)',
-                        backgroundColor: 'rgba(25, 118, 210, 0.15)',
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        pointBackgroundColor: 'rgba(25, 118, 210, 1)',
-                        tension: 0,
-                        fill: false
-                    }
-                ]
+    function baseChartOptions(yTitle, xTitle) {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    grid: { color: 'rgba(0,0,0,0.08)' },
+                    title: { display: true, text: yTitle || 'مقدار', font: { size: 11 } }
                 },
-                scales: {
-                    y: {
-                        grid: { color: 'rgba(0,0,0,0.08)' },
-                        title: { display: true, text: yTitle, font: { size: 11 } }
-                    },
-                    x: {
-                        title: { display: true, text: 'شماره زیرگروه', font: { size: 11 } },
-                        grid: { display: false }
-                    }
+                x: {
+                    grid: { display: false },
+                    title: { display: true, text: xTitle || '', font: { size: 11 } }
                 }
             }
+        };
+    }
+
+    function destroyChart(id) {
+        if (chartInstances[id]) {
+            chartInstances[id].destroy();
+            delete chartInstances[id];
+        }
+    }
+
+    function createControlLineChart(canvasId, labels, values, limits, yTitle, isSkeleton) {
+        destroyChart(canvasId);
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
+
+        const datasets = [];
+        if (!isSkeleton && limits) {
+            datasets.push(
+                { label: 'UCL', data: labels.map(function() { return limits.ucl; }), borderColor: 'rgba(211,47,47,0.9)', borderWidth: 2, borderDash: [6,4], pointRadius: 0, fill: false },
+                { label: 'CL', data: labels.map(function() { return limits.cl; }), borderColor: 'rgba(33,33,33,0.85)', borderWidth: 2, pointRadius: 0, fill: false },
+                { label: 'LCL', data: labels.map(function() { return limits.lcl; }), borderColor: 'rgba(211,47,47,0.9)', borderWidth: 2, borderDash: [6,4], pointRadius: 0, fill: false }
+            );
+        }
+        datasets.push({
+            label: yTitle,
+            data: values,
+            borderColor: isSkeleton ? 'rgba(200,200,200,0.5)' : 'rgba(25,118,210,1)',
+            backgroundColor: isSkeleton ? 'rgba(200,200,200,0.1)' : 'rgba(25,118,210,0.15)',
+            borderWidth: isSkeleton ? 1 : 2,
+            pointRadius: isSkeleton ? 0 : 4,
+            pointBackgroundColor: 'rgba(25,118,210,1)',
+            tension: 0,
+            fill: false,
+            spanGaps: true
+        });
+
+        chartInstances[canvasId] = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels, datasets: datasets },
+            options: baseChartOptions(yTitle, isSkeleton ? 'شماره زیرگروه' : 'شماره زیرگروه')
         });
     }
 
-    function createHistogramChart(canvasId, histogramData) {
+    function createMonthlyBarChart(canvasId, histogramData, isSkeleton) {
+        destroyChart(canvasId);
         const ctx = document.getElementById(canvasId);
-        if (!ctx || !histogramData) return;
+        if (!ctx) return;
 
-        new Chart(ctx, {
+        const labels = isSkeleton ? SKELETON_LABELS : histogramData.months;
+        const datasets = [];
+
+        if (isSkeleton) {
+            datasets.push({
+                label: 'میانگین',
+                data: labels.map(function() { return null; }),
+                backgroundColor: 'rgba(200,200,200,0.25)',
+                borderColor: 'rgba(200,200,200,0.5)',
+                borderWidth: 1
+            });
+        } else {
+            datasets.push({
+                label: histogramData.primary_label || 'میانگین',
+                data: histogramData.primary,
+                backgroundColor: 'rgba(54,162,235,0.65)',
+                borderColor: 'rgba(54,162,235,1)',
+                borderWidth: 1,
+                skipNull: true
+            });
+            if (histogramData.secondary) {
+                datasets.push({
+                    label: histogramData.secondary_label || 'میانگین ۲',
+                    data: histogramData.secondary,
+                    backgroundColor: 'rgba(75,192,192,0.65)',
+                    borderColor: 'rgba(75,192,192,1)',
+                    borderWidth: 1,
+                    skipNull: true
+                });
+            }
+        }
+
+        chartInstances[canvasId] = new Chart(ctx, {
             type: 'bar',
-            data: {
-                labels: histogramData.labels,
-                datasets: [
-                    {
-                        label: 'فراوانی',
-                        data: histogramData.counts,
-                        backgroundColor: 'rgba(25, 118, 210, 0.55)',
-                        borderColor: 'rgba(25, 118, 210, 0.85)',
-                        borderWidth: 1,
-                        order: 2
-                    },
-                    {
-                        label: 'توزیع نرمال',
-                        type: 'line',
-                        data: histogramData.normal_curve,
-                        borderColor: 'rgba(211, 47, 47, 0.95)',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2.5,
-                        pointRadius: 0,
-                        tension: 0.4,
-                        order: 1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: { display: true, text: 'فراوانی' },
-                        grid: { color: 'rgba(0,0,0,0.08)' }
-                    },
-                    x: {
-                        title: { display: true, text: 'بازه تراکم' },
-                        grid: { display: false },
-                        ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } }
-                    }
-                }
-            }
+            data: { labels: labels, datasets: datasets },
+            options: baseChartOptions('مقدار', isSkeleton ? 'ماه' : 'ماه')
         });
     }
 
-    function createScatterChart(canvasId, scatterPoints, yLabel) {
+    function createScatterChart(canvasId, scatterPoints, xLabel, yLabel, isSkeleton) {
+        destroyChart(canvasId);
         const ctx = document.getElementById(canvasId);
-        if (!ctx || !scatterPoints || !scatterPoints.length) return;
+        if (!ctx) return;
 
-        const projectMap = {};
-        scatterPoints.forEach(function(point) {
-            const key = point.project;
-            if (!projectMap[key]) {
-                projectMap[key] = {
-                    label: key,
-                    data: [],
-                    backgroundColor: 'hsl(' + Math.floor(Math.random() * 360) + ', 70%, 50%)'
-                };
-            }
-            projectMap[key].data.push({ x: point.density, y: point.y });
-        });
-
-        new Chart(ctx, {
-            type: 'scatter',
-            data: { datasets: Object.values(projectMap) },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
-                scales: {
-                    x: {
-                        display: true,
-                        title: { display: true, text: 'تراکم' },
-                        beginAtZero: false,
-                        grid: { color: 'rgba(0,0,0,0.08)' }
-                    },
-                    y: {
-                        display: true,
-                        title: { display: true, text: yLabel || 'مقاومت' },
-                        beginAtZero: false,
-                        grid: { color: 'rgba(0,0,0,0.08)' }
-                    }
+        let datasets;
+        if (isSkeleton) {
+            datasets = [{
+                label: 'بدون داده',
+                data: [],
+                backgroundColor: 'rgba(200,200,200,0.3)'
+            }];
+        } else {
+            const projectMap = {};
+            scatterPoints.forEach(function(point) {
+                const key = point.project;
+                if (!projectMap[key]) {
+                    projectMap[key] = {
+                        label: key,
+                        data: [],
+                        backgroundColor: 'hsl(' + Math.floor(Math.random() * 360) + ', 70%, 50%)'
+                    };
                 }
-            }
+                projectMap[key].data.push({ x: point.x, y: point.y });
+            });
+            datasets = Object.values(projectMap);
+        }
+
+        chartInstances[canvasId] = new Chart(ctx, {
+            type: 'scatter',
+            data: { datasets: datasets },
+            options: baseChartOptions(yLabel, xLabel)
+        });
+    }
+
+    function updateTitles() {
+        const primary = statisticalCharts.primary_label || 'نتایج';
+        const secondary = statisticalCharts.secondary_label || primary;
+        document.getElementById('xbarSTitle').textContent = 'Control Xbar-S — ' + primary;
+        document.getElementById('xbarRTitle').textContent = 'Control Xbar-R — ' + primary;
+        document.getElementById('histogramTitle').textContent = 'هیستوگرام — میانگین ماهانه';
+        document.getElementById('scatterTitle').textContent = 'نمودار پراکندگی — ' + primary + ' / ' + secondary;
+    }
+
+    function hideNotes() {
+        ['xbarSNote', 'xbarRNote', 'histogramNote', 'scatterNote'].forEach(function(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('d-none');
         });
     }
 
@@ -420,37 +405,50 @@
             return;
         }
 
-        if (statisticalCharts.xbar_s) {
+        updateTitles();
+        const hasData = statisticalCharts.has_data;
+        const primaryLabel = statisticalCharts.primary_label || 'مقدار';
+
+        if (hasData && statisticalCharts.xbar_s) {
+            hideNotes();
             const xbarS = statisticalCharts.xbar_s;
             document.getElementById('xbarSStats').textContent = formatStats(xbarS.stats);
-            createControlLineChart('xbarSMeanChart', xbarS.labels, xbarS.xbar, xbarS.xbar_limits, 'میانگین تراکم');
-            createControlLineChart('xbarSStdChart', xbarS.labels, xbarS.s, xbarS.s_limits, 'انحراف معیار');
+            createControlLineChart('xbarSMeanChart', xbarS.labels, xbarS.xbar, xbarS.xbar_limits, 'میانگین ' + primaryLabel, false);
+            createControlLineChart('xbarSStdChart', xbarS.labels, xbarS.s, xbarS.s_limits, 'انحراف معیار', false);
         } else {
-            showEmpty('xbarSEmpty', 'xbarSCharts');
+            createControlLineChart('xbarSMeanChart', SKELETON_LABELS, SKELETON_LABELS.map(function() { return null; }), null, 'میانگین', true);
+            createControlLineChart('xbarSStdChart', SKELETON_LABELS, SKELETON_LABELS.map(function() { return null; }), null, 'انحراف معیار', true);
         }
 
-        if (statisticalCharts.xbar_r) {
+        if (hasData && statisticalCharts.xbar_r) {
+            hideNotes();
             const xbarR = statisticalCharts.xbar_r;
             document.getElementById('xbarRStats').textContent = formatStats(xbarR.stats);
-            createControlLineChart('xbarRMeanChart', xbarR.labels, xbarR.xbar, xbarR.xbar_limits, 'میانگین مقاومت');
-            createControlLineChart('xbarRRangeChart', xbarR.labels, xbarR.r, xbarR.r_limits, 'دامنه');
+            createControlLineChart('xbarRMeanChart', xbarR.labels, xbarR.xbar, xbarR.xbar_limits, 'میانگین ' + primaryLabel, false);
+            createControlLineChart('xbarRRangeChart', xbarR.labels, xbarR.r, xbarR.r_limits, 'دامنه', false);
         } else {
-            showEmpty('xbarREmpty', 'xbarRCharts');
+            createControlLineChart('xbarRMeanChart', SKELETON_LABELS, SKELETON_LABELS.map(function() { return null; }), null, 'میانگین', true);
+            createControlLineChart('xbarRRangeChart', SKELETON_LABELS, SKELETON_LABELS.map(function() { return null; }), null, 'دامنه', true);
         }
 
-        if (statisticalCharts.histogram) {
-            document.getElementById('histogramStats').textContent = formatStats(statisticalCharts.histogram.stats);
-            createHistogramChart('histogramChart', statisticalCharts.histogram);
+        if (hasData && statisticalCharts.histogram) {
+            hideNotes();
+            createMonthlyBarChart('histogramChart', statisticalCharts.histogram, false);
         } else {
-            document.getElementById('histogramEmpty').classList.remove('d-none');
-            document.getElementById('histogramChart').parentElement.classList.add('d-none');
+            createMonthlyBarChart('histogramChart', null, true);
         }
 
-        if (statisticalCharts.scatter && statisticalCharts.scatter.length) {
-            createScatterChart('scatterChart', statisticalCharts.scatter, statisticalCharts.scatter_y_label);
+        if (hasData && statisticalCharts.scatter && statisticalCharts.scatter.length) {
+            hideNotes();
+            createScatterChart(
+                'scatterChart',
+                statisticalCharts.scatter,
+                statisticalCharts.scatter_x_label,
+                statisticalCharts.scatter_y_label,
+                false
+            );
         } else {
-            document.getElementById('scatterEmpty').classList.remove('d-none');
-            document.getElementById('scatterChart').parentElement.classList.add('d-none');
+            createScatterChart('scatterChart', [], statisticalCharts.scatter_x_label || 'محور X', statisticalCharts.scatter_y_label || 'محور Y', true);
         }
     });
 </script>
