@@ -71,7 +71,7 @@
     <div class="row gy-4">
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header">Control Xbar-S <small class="text-muted">(میانگین تراکم)</small></div>
+                <div class="card-header">Control Xbar-S</div>
                 <div class="card-body">
                     <canvas id="xbarSChart"></canvas>
                 </div>
@@ -79,7 +79,7 @@
         </div>
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header">Control Xbar-R <small class="text-muted">(میانگین مقاومت)</small></div>
+                <div class="card-header">Control Xbar-R</div>
                 <div class="card-body">
                     <canvas id="xbarRChart"></canvas>
                 </div>
@@ -87,7 +87,7 @@
         </div>
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header">هیستگرام <small class="text-muted">(میانگین ماهانه)</small></div>
+                <div class="card-header">هیستگرام</div>
                 <div class="card-body">
                     <canvas id="histogramChart"></canvas>
                 </div>
@@ -151,24 +151,36 @@
     }
 
     function buildBarChart(ctx) {
+        const datasets = [];
+        if (hasNumericData(chartData.density)) {
+            datasets.push({
+                label: 'میانگین تراکم',
+                data: chartData.density,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                skipNull: true,
+            });
+        }
+        if (hasNumericData(chartData.strength)) {
+            datasets.push({
+                label: 'میانگین مقاومت',
+                data: chartData.strength,
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                skipNull: true,
+            });
+        }
+        if (!datasets.length) {
+            datasets.push({
+                label: 'بدون داده',
+                data: chartData.density.map(() => null),
+                backgroundColor: 'rgba(200, 200, 200, 0.3)',
+            });
+        }
+
         return new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: chartData.months,
-                datasets: [
-                    {
-                        label: 'میانگین تراکم',
-                        data: chartData.density,
-                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                        skipNull: true,
-                    },
-                    {
-                        label: 'میانگین مقاومت',
-                        data: chartData.strength,
-                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                        skipNull: true,
-                    }
-                ]
+                datasets: datasets
             },
             options: {
                 responsive: true,
@@ -234,13 +246,23 @@
             return;
         }
 
-        if (xbarSCtx && hasNumericData(chartData.xbar_s)) {
-            buildLineChart(xbarSCtx, 'میانگین تراکم', chartData.xbar_s, 'rgba(54, 162, 235, 1)');
+        if (xbarSCtx) {
+            buildLineChart(
+                xbarSCtx,
+                hasNumericData(chartData.xbar_s) ? 'میانگین تراکم' : 'بدون داده',
+                chartData.xbar_s,
+                'rgba(54, 162, 235, 1)'
+            );
         }
-        if (xbarRCtx && hasNumericData(chartData.xbar_r)) {
-            buildLineChart(xbarRCtx, 'میانگین مقاومت', chartData.xbar_r, 'rgba(75, 192, 192, 1)');
+        if (xbarRCtx) {
+            buildLineChart(
+                xbarRCtx,
+                hasNumericData(chartData.xbar_r) ? 'میانگین مقاومت' : 'بدون داده',
+                chartData.xbar_r,
+                'rgba(75, 192, 192, 1)'
+            );
         }
-        if (histogramCtx && (hasNumericData(chartData.density) || hasNumericData(chartData.strength))) {
+        if (histogramCtx) {
             buildBarChart(histogramCtx);
         }
         if (scatterCtx) {

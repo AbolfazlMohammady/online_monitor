@@ -91,8 +91,11 @@ def filter_queryset_by_nested_project(queryset, project_id, user, project_field=
     return queryset.filter(**{f'{project_field}__in': ids})
 
 
-def parse_jalali_date_string(date_str):
-    """Convert YYYY/MM/DD or YYYY-MM-DD jalali string to gregorian date."""
+def parse_jalali_date_string(date_str, as_jalali=False):
+    """Parse YYYY/MM/DD or YYYY-MM-DD jalali string.
+
+    Returns gregorian ``date`` by default; pass ``as_jalali=True`` for jDateField filters.
+    """
     if not date_str:
         return None
     import jdatetime
@@ -103,6 +106,9 @@ def parse_jalali_date_string(date_str):
         return None
     try:
         jy, jm, jd = int(parts[0]), int(parts[1]), int(parts[2])
-        return jdatetime.date(jy, jm, jd).togregorian()
+        jdate = jdatetime.date(jy, jm, jd)
+        if as_jalali:
+            return jdate
+        return jdate.togregorian()
     except (ValueError, TypeError):
         return None

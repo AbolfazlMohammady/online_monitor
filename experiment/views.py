@@ -1045,15 +1045,15 @@ def experiment_results_charts(request):
 
     empty_chart = json.dumps(build_empty_chart_data(), ensure_ascii=False)
 
+    project_id = request.GET.get('project', '').strip()
+    layer_code = request.GET.get('layer', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+
     try:
         user = request.user
         accessible = get_user_accessible_projects(user)
         projects = get_filter_projects(user)
-
-        project_id = request.GET.get('project', '').strip()
-        layer_code = request.GET.get('layer', '').strip()
-        date_from = request.GET.get('date_from', '').strip()
-        date_to = request.GET.get('date_to', '').strip()
 
         responses = models.ExperimentResponse.objects.filter(
             experiment_request__project__in=accessible
@@ -1073,22 +1073,22 @@ def experiment_results_charts(request):
         if layer_code:
             responses = filter_responses_by_layer(responses, layer_code)
 
-        g_date_from = parse_jalali_date_string(date_from)
-        g_date_to = parse_jalali_date_string(date_to)
-        if g_date_from:
+        j_date_from = parse_jalali_date_string(date_from, as_jalali=True)
+        j_date_to = parse_jalali_date_string(date_to, as_jalali=True)
+        if j_date_from:
             responses = responses.filter(
-                models.Q(response_date__gte=g_date_from)
+                models.Q(response_date__gte=j_date_from)
                 | models.Q(
                     response_date__isnull=True,
-                    experiment_request__request_date__gte=g_date_from,
+                    experiment_request__request_date__gte=j_date_from,
                 )
             )
-        if g_date_to:
+        if j_date_to:
             responses = responses.filter(
-                models.Q(response_date__lte=g_date_to)
+                models.Q(response_date__lte=j_date_to)
                 | models.Q(
                     response_date__isnull=True,
-                    experiment_request__request_date__lte=g_date_to,
+                    experiment_request__request_date__lte=j_date_to,
                 )
             )
 
@@ -1118,14 +1118,21 @@ def experiment_results_charts(request):
     except Exception as e:
         logger.exception('Error in experiment_results_charts: %s', e)
         messages.error(request, 'خطا در بارگذاری نمودارهای نتایج آزمایشات. لطفاً فیلترها را بررسی کنید.')
+        layer_label = ''
+        if layer_code:
+            for item in EXPERIMENT_RESULT_LAYERS:
+                if item['code'] == layer_code:
+                    layer_label = item['label']
+                    break
+
         context = {
             'projects': get_filter_projects(request.user),
             'layers': EXPERIMENT_RESULT_LAYERS,
-            'selected_project': '',
-            'selected_layer': '',
-            'selected_layer_label': '',
-            'date_from': '',
-            'date_to': '',
+            'selected_project': project_id,
+            'selected_layer': layer_code,
+            'selected_layer_label': layer_label,
+            'date_from': date_from,
+            'date_to': date_to,
             'chart_data': empty_chart,
             'all_responses': '[]',
             'total_responses': 0,

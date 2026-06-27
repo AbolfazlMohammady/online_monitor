@@ -122,8 +122,8 @@ def build_empty_chart_data():
         'months': ['بدون داده'],
         'xbar_s': [None],
         'xbar_r': [None],
-        'density': [0],
-        'strength': [0],
+        'density': [None],
+        'strength': [None],
     }
 
 
