@@ -1037,13 +1037,12 @@ def experiment_results_charts(request):
         EXPERIMENT_RESULT_LAYERS,
         filter_responses_by_layer,
         filter_responses_to_chart_layers,
-        build_empty_chart_data,
-        build_chart_data_from_responses,
-        build_scatter_points,
+        build_empty_statistical_charts,
+        build_statistical_charts_from_responses,
     )
     import json
 
-    empty_chart = json.dumps(build_empty_chart_data(), ensure_ascii=False)
+    empty_charts = json.dumps(build_empty_statistical_charts(), ensure_ascii=False)
 
     project_id = request.GET.get('project', '').strip()
     layer_code = request.GET.get('layer', '').strip()
@@ -1077,24 +1076,28 @@ def experiment_results_charts(request):
         j_date_to = parse_jalali_date_string(date_to, as_jalali=True)
         if j_date_from:
             responses = responses.filter(
-                models.Q(response_date__gte=j_date_from)
-                | models.Q(
+                Q(response_date__gte=j_date_from)
+                | Q(
                     response_date__isnull=True,
                     experiment_request__request_date__gte=j_date_from,
                 )
             )
         if j_date_to:
             responses = responses.filter(
-                models.Q(response_date__lte=j_date_to)
-                | models.Q(
+                Q(response_date__lte=j_date_to)
+                | Q(
                     response_date__isnull=True,
                     experiment_request__request_date__lte=j_date_to,
                 )
             )
 
-        response_list = list(responses)
-        chart_data = build_chart_data_from_responses(response_list)
-        all_responses = build_scatter_points(response_list)
+        has_active_filters = any([project_id, layer_code, date_from, date_to])
+        if not has_active_filters:
+            response_list = []
+            statistical_charts = build_empty_statistical_charts()
+        else:
+            response_list = list(responses)
+            statistical_charts = build_statistical_charts_from_responses(response_list)
 
         layer_label = ''
         if layer_code:
@@ -1111,8 +1114,8 @@ def experiment_results_charts(request):
             'selected_layer_label': layer_label,
             'date_from': date_from,
             'date_to': date_to,
-            'chart_data': json.dumps(chart_data, ensure_ascii=False),
-            'all_responses': json.dumps(all_responses, ensure_ascii=False),
+            'has_active_filters': has_active_filters,
+            'statistical_charts': json.dumps(statistical_charts, ensure_ascii=False),
             'total_responses': len(response_list),
         }
     except Exception as e:
@@ -1133,8 +1136,8 @@ def experiment_results_charts(request):
             'selected_layer_label': layer_label,
             'date_from': date_from,
             'date_to': date_to,
-            'chart_data': empty_chart,
-            'all_responses': '[]',
+            'has_active_filters': any([project_id, layer_code, date_from, date_to]),
+            'statistical_charts': empty_charts,
             'total_responses': 0,
         }
 
@@ -1166,9 +1169,9 @@ def update_experiment_kilometers(request):
     old_experiments = models.ExperimentRequest.objects.filter(
         project=project
     ).filter(
-        models.Q(start_kilometer__gte=1000) | 
-        models.Q(start_kilometer__lt=project_start) | 
-        models.Q(start_kilometer__gt=project_end)
+        Q(start_kilometer__gte=1000) |
+        Q(start_kilometer__lt=project_start) |
+        Q(start_kilometer__gt=project_end)
     ).order_by('id')
     
     count = old_experiments.count()

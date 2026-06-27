@@ -5,6 +5,9 @@ from statistics import mean, pstdev
 
 SUBGROUP_SIZE = 5
 CONTROL_CONSTANTS = {
+    2: {'A2': 1.880, 'D3': 0.0, 'D4': 3.267, 'A3': 2.659, 'B3': 0.0, 'B4': 3.267},
+    3: {'A2': 1.023, 'D3': 0.0, 'D4': 2.574, 'A3': 1.954, 'B3': 0.0, 'B4': 2.568},
+    4: {'A2': 0.729, 'D3': 0.0, 'D4': 2.282, 'A3': 1.628, 'B3': 0.0, 'B4': 2.266},
     5: {'A2': 0.577, 'D3': 0.0, 'D4': 2.114, 'A3': 1.427, 'B3': 0.0, 'B4': 2.089},
 }
 
@@ -27,12 +30,23 @@ def _subgroups(values, size=SUBGROUP_SIZE):
     return [trimmed[i : i + size] for i in range(0, len(trimmed), size)]
 
 
-def _xbar_r_from_values(values):
-    groups = _subgroups(values)
+def _best_subgroups(values):
+    """Pick the largest subgroup size (5→2) that yields at least one complete group."""
+    for size in (5, 4, 3, 2):
+        groups = _subgroups(values, size)
+        if groups:
+            return groups, size
+    return [], None
+
+
+def build_xbar_r_chart(values):
+    """Build Xbar-R control chart payload from a flat list of numeric values."""
+    values = _to_float_list(values)
+    groups, subgroup_size = _best_subgroups(values)
     if not groups:
         return None
 
-    n = len(groups[0])
+    n = subgroup_size
     constants = CONTROL_CONSTANTS.get(n, CONTROL_CONSTANTS[SUBGROUP_SIZE])
     xbars = [mean(group) for group in groups]
     ranges = [max(group) - min(group) for group in groups]
@@ -61,12 +75,18 @@ def _xbar_r_from_values(values):
     }
 
 
-def _xbar_s_from_values(values):
-    groups = _subgroups(values)
+def _xbar_r_from_values(values):
+    return build_xbar_r_chart(values)
+
+
+def build_xbar_s_chart(values):
+    """Build Xbar-S control chart payload from a flat list of numeric values."""
+    values = _to_float_list(values)
+    groups, subgroup_size = _best_subgroups(values)
     if not groups:
         return None
 
-    n = len(groups[0])
+    n = subgroup_size
     constants = CONTROL_CONSTANTS.get(n, CONTROL_CONSTANTS[SUBGROUP_SIZE])
     xbars = [mean(group) for group in groups]
     stds = [pstdev(group) if len(group) > 1 else 0 for group in groups]
@@ -93,6 +113,16 @@ def _xbar_s_from_values(values):
             'n': len(values),
         },
     }
+
+
+def _xbar_s_from_values(values):
+    return build_xbar_s_chart(values)
+
+
+def histogram_from_values(values, bins=8):
+    """Build histogram payload from a flat list of numeric values."""
+    values = _to_float_list(values)
+    return _histogram_data(values, bins=bins)
 
 
 def _histogram_data(values, bins=8):

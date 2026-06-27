@@ -7,7 +7,11 @@
 {% block head %}
 <style>
   .chart-card .card-body { min-height: 320px; position: relative; }
-  .chart-card canvas { min-height: 280px; }
+  .control-chart-stack { display: flex; flex-direction: column; gap: 0.5rem; }
+  .control-chart-subtitle { font-size: 0.8rem; color: #666; margin-bottom: 0.25rem; font-weight: 600; }
+  .control-chart-container { position: relative; width: 100%; height: 200px; }
+  .control-chart-container-lg { height: 280px; }
+  .chart-empty-msg { color: #888; text-align: center; padding: 2rem 1rem; font-size: 0.9rem; }
 </style>
 {% endblock %}
 
@@ -71,25 +75,65 @@
     <div class="row gy-4">
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header">Control Xbar-S</div>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Control Xbar-S — تراکم</span>
+                    <small class="text-muted" id="xbarSStats"></small>
+                </div>
                 <div class="card-body">
-                    <canvas id="xbarSChart"></canvas>
+                    <div id="xbarSEmpty" class="chart-empty-msg d-none">داده تراکم کافی برای رسم نمودار کنترل وجود ندارد.</div>
+                    <div class="control-chart-stack" id="xbarSCharts">
+                        <div class="control-chart-sub">
+                            <div class="control-chart-subtitle">میانگین نمونه (X̄)</div>
+                            <div class="control-chart-container">
+                                <canvas id="xbarSMeanChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="control-chart-sub">
+                            <div class="control-chart-subtitle">انحراف معیار نمونه (S)</div>
+                            <div class="control-chart-container">
+                                <canvas id="xbarSStdChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header">Control Xbar-R</div>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Control Xbar-R — مقاومت فشاری</span>
+                    <small class="text-muted" id="xbarRStats"></small>
+                </div>
                 <div class="card-body">
-                    <canvas id="xbarRChart"></canvas>
+                    <div id="xbarREmpty" class="chart-empty-msg d-none">داده مقاومت فشاری ثبت نشده است. برای لایه‌های بتن، نتایج مقاومت ۱/۲/۳ را وارد کنید.</div>
+                    <div class="control-chart-stack" id="xbarRCharts">
+                        <div class="control-chart-sub">
+                            <div class="control-chart-subtitle">میانگین نمونه (X̄)</div>
+                            <div class="control-chart-container">
+                                <canvas id="xbarRMeanChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="control-chart-sub">
+                            <div class="control-chart-subtitle">دامنه نمونه (R)</div>
+                            <div class="control-chart-container">
+                                <canvas id="xbarRRangeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-lg-6">
             <div class="card chart-card">
-                <div class="card-header">هیستگرام</div>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>هیستوگرام — توزیع تراکم</span>
+                    <small class="text-muted" id="histogramStats"></small>
+                </div>
                 <div class="card-body">
-                    <canvas id="histogramChart"></canvas>
+                    <div id="histogramEmpty" class="chart-empty-msg d-none">داده تراکم برای هیستوگرام وجود ندارد.</div>
+                    <div class="control-chart-container control-chart-container-lg">
+                        <canvas id="histogramChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -97,16 +141,25 @@
             <div class="card chart-card">
                 <div class="card-header">نمودار پراکندگی</div>
                 <div class="card-body">
-                    <canvas id="scatterChart"></canvas>
+                    <div id="scatterEmpty" class="chart-empty-msg d-none">داده کافی برای نمودار پراکندگی وجود ندارد.</div>
+                    <div class="control-chart-container control-chart-container-lg">
+                        <canvas id="scatterChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="mt-4">
+        {% if not has_active_filters %}
+        <div class="alert alert-secondary">
+            برای مشاهده نمودارها، پروژه، لایه یا بازه تاریخ را انتخاب کنید و دکمه جستجو را بزنید.
+        </div>
+        {% else %}
         <div class="alert alert-info">
             تعداد پاسخ‌های یافت‌شده: <strong>{{ total_responses }}</strong>
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
@@ -114,159 +167,222 @@
 {% block script %}
 <script src="{% static 'js/chart.js' %}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'"></script>
 <script>
-    const chartData = {{ chart_data|safe }};
-    const allResponses = {{ all_responses|safe }};
+    const statisticalCharts = {{ statistical_charts|safe }};
 
-    function hasNumericData(arr) {
-        return Array.isArray(arr) && arr.some(v => v !== null && v !== undefined && !Number.isNaN(Number(v)));
+    function formatStats(stats) {
+        if (!stats) return '';
+        return 'Mean: ' + stats.mean + ' | StDev: ' + stats.stdev + ' | N: ' + stats.n;
     }
 
-    function buildLineChart(ctx, label, data, color) {
-        return new Chart(ctx, {
+    function showEmpty(emptyId, chartsId) {
+        const emptyEl = document.getElementById(emptyId);
+        const chartsEl = document.getElementById(chartsId);
+        if (emptyEl) emptyEl.classList.remove('d-none');
+        if (chartsEl) chartsEl.classList.add('d-none');
+    }
+
+    function createControlLineChart(canvasId, labels, values, limits, yTitle) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx || !values) return;
+
+        const uclData = labels.map(function() { return limits.ucl; });
+        const clData = labels.map(function() { return limits.cl; });
+        const lclData = labels.map(function() { return limits.lcl; });
+
+        new Chart(ctx, {
             type: 'line',
             data: {
-                labels: chartData.months,
-                datasets: [{
-                    label: label,
-                    data: data,
-                    borderColor: color,
-                    backgroundColor: color,
-                    fill: false,
-                    tension: 0.2,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    spanGaps: true,
-                }]
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'UCL',
+                        data: uclData,
+                        borderColor: 'rgba(211, 47, 47, 0.9)',
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        fill: false
+                    },
+                    {
+                        label: 'CL',
+                        data: clData,
+                        borderColor: 'rgba(33, 33, 33, 0.85)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false
+                    },
+                    {
+                        label: 'LCL',
+                        data: lclData,
+                        borderColor: 'rgba(211, 47, 47, 0.9)',
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        fill: false
+                    },
+                    {
+                        label: yTitle,
+                        data: values,
+                        borderColor: 'rgba(25, 118, 210, 1)',
+                        backgroundColor: 'rgba(25, 118, 210, 0.15)',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointBackgroundColor: 'rgba(25, 118, 210, 1)',
+                        tension: 0,
+                        fill: false
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: true } },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+                },
                 scales: {
-                    x: { display: true, title: { display: true, text: 'ماه' } },
-                    y: { beginAtZero: false, display: true, title: { display: true, text: 'مقدار' } }
+                    y: {
+                        grid: { color: 'rgba(0,0,0,0.08)' },
+                        title: { display: true, text: yTitle, font: { size: 11 } }
+                    },
+                    x: {
+                        title: { display: true, text: 'شماره زیرگروه', font: { size: 11 } },
+                        grid: { display: false }
+                    }
                 }
             }
         });
     }
 
-    function buildBarChart(ctx) {
-        const datasets = [];
-        if (hasNumericData(chartData.density)) {
-            datasets.push({
-                label: 'میانگین تراکم',
-                data: chartData.density,
-                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                skipNull: true,
-            });
-        }
-        if (hasNumericData(chartData.strength)) {
-            datasets.push({
-                label: 'میانگین مقاومت',
-                data: chartData.strength,
-                backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                skipNull: true,
-            });
-        }
-        if (!datasets.length) {
-            datasets.push({
-                label: 'بدون داده',
-                data: chartData.density.map(() => null),
-                backgroundColor: 'rgba(200, 200, 200, 0.3)',
-            });
-        }
+    function createHistogramChart(canvasId, histogramData) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx || !histogramData) return;
 
-        return new Chart(ctx, {
+        new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: chartData.months,
-                datasets: datasets
+                labels: histogramData.labels,
+                datasets: [
+                    {
+                        label: 'فراوانی',
+                        data: histogramData.counts,
+                        backgroundColor: 'rgba(25, 118, 210, 0.55)',
+                        borderColor: 'rgba(25, 118, 210, 0.85)',
+                        borderWidth: 1,
+                        order: 2
+                    },
+                    {
+                        label: 'توزیع نرمال',
+                        type: 'line',
+                        data: histogramData.normal_curve,
+                        borderColor: 'rgba(211, 47, 47, 0.95)',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2.5,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        order: 1
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
                 scales: {
-                    x: { display: true },
-                    y: { beginAtZero: false, display: true }
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'فراوانی' },
+                        grid: { color: 'rgba(0,0,0,0.08)' }
+                    },
+                    x: {
+                        title: { display: true, text: 'بازه تراکم' },
+                        grid: { display: false },
+                        ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } }
+                    }
                 }
             }
         });
     }
 
-    function buildScatterChart(ctx) {
-        const datasets = [];
-        const projectMap = {};
+    function createScatterChart(canvasId, scatterPoints, yLabel) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx || !scatterPoints || !scatterPoints.length) return;
 
-        allResponses.forEach(resp => {
-            if (resp.density !== null && resp.strength !== null) {
-                const key = resp.project;
-                if (!projectMap[key]) {
-                    projectMap[key] = {
-                        label: key,
-                        data: [],
-                        backgroundColor: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`
-                    };
-                }
-                projectMap[key].data.push({ x: resp.density, y: resp.strength });
+        const projectMap = {};
+        scatterPoints.forEach(function(point) {
+            const key = point.project;
+            if (!projectMap[key]) {
+                projectMap[key] = {
+                    label: key,
+                    data: [],
+                    backgroundColor: 'hsl(' + Math.floor(Math.random() * 360) + ', 70%, 50%)'
+                };
             }
+            projectMap[key].data.push({ x: point.density, y: point.y });
         });
 
-        Object.values(projectMap).forEach(dataset => datasets.push(dataset));
-
-        if (!datasets.length) {
-            datasets.push({
-                label: 'بدون داده',
-                data: [],
-                backgroundColor: 'rgba(200, 200, 200, 0.5)',
-            });
-        }
-
-        return new Chart(ctx, {
+        new Chart(ctx, {
             type: 'scatter',
-            data: { datasets },
+            data: { datasets: Object.values(projectMap) },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
                 scales: {
-                    x: { display: true, title: { display: true, text: 'تراکم' }, beginAtZero: false },
-                    y: { display: true, title: { display: true, text: 'مقاومت' }, beginAtZero: false }
+                    x: {
+                        display: true,
+                        title: { display: true, text: 'تراکم' },
+                        beginAtZero: false,
+                        grid: { color: 'rgba(0,0,0,0.08)' }
+                    },
+                    y: {
+                        display: true,
+                        title: { display: true, text: yLabel || 'مقاومت' },
+                        beginAtZero: false,
+                        grid: { color: 'rgba(0,0,0,0.08)' }
+                    }
                 }
             }
         });
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        const xbarSCtx = document.getElementById('xbarSChart');
-        const xbarRCtx = document.getElementById('xbarRChart');
-        const histogramCtx = document.getElementById('histogramChart');
-        const scatterCtx = document.getElementById('scatterChart');
-
         if (typeof Chart === 'undefined') {
             console.error('Chart.js failed to load');
             return;
         }
 
-        if (xbarSCtx) {
-            buildLineChart(
-                xbarSCtx,
-                hasNumericData(chartData.xbar_s) ? 'میانگین تراکم' : 'بدون داده',
-                chartData.xbar_s,
-                'rgba(54, 162, 235, 1)'
-            );
+        if (statisticalCharts.xbar_s) {
+            const xbarS = statisticalCharts.xbar_s;
+            document.getElementById('xbarSStats').textContent = formatStats(xbarS.stats);
+            createControlLineChart('xbarSMeanChart', xbarS.labels, xbarS.xbar, xbarS.xbar_limits, 'میانگین تراکم');
+            createControlLineChart('xbarSStdChart', xbarS.labels, xbarS.s, xbarS.s_limits, 'انحراف معیار');
+        } else {
+            showEmpty('xbarSEmpty', 'xbarSCharts');
         }
-        if (xbarRCtx) {
-            buildLineChart(
-                xbarRCtx,
-                hasNumericData(chartData.xbar_r) ? 'میانگین مقاومت' : 'بدون داده',
-                chartData.xbar_r,
-                'rgba(75, 192, 192, 1)'
-            );
+
+        if (statisticalCharts.xbar_r) {
+            const xbarR = statisticalCharts.xbar_r;
+            document.getElementById('xbarRStats').textContent = formatStats(xbarR.stats);
+            createControlLineChart('xbarRMeanChart', xbarR.labels, xbarR.xbar, xbarR.xbar_limits, 'میانگین مقاومت');
+            createControlLineChart('xbarRRangeChart', xbarR.labels, xbarR.r, xbarR.r_limits, 'دامنه');
+        } else {
+            showEmpty('xbarREmpty', 'xbarRCharts');
         }
-        if (histogramCtx) {
-            buildBarChart(histogramCtx);
+
+        if (statisticalCharts.histogram) {
+            document.getElementById('histogramStats').textContent = formatStats(statisticalCharts.histogram.stats);
+            createHistogramChart('histogramChart', statisticalCharts.histogram);
+        } else {
+            document.getElementById('histogramEmpty').classList.remove('d-none');
+            document.getElementById('histogramChart').parentElement.classList.add('d-none');
         }
-        if (scatterCtx) {
-            buildScatterChart(scatterCtx);
+
+        if (statisticalCharts.scatter && statisticalCharts.scatter.length) {
+            createScatterChart('scatterChart', statisticalCharts.scatter, statisticalCharts.scatter_y_label);
+        } else {
+            document.getElementById('scatterEmpty').classList.remove('d-none');
+            document.getElementById('scatterChart').parentElement.classList.add('d-none');
         }
     });
 </script>

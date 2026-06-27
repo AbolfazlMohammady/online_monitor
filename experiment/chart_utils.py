@@ -117,84 +117,97 @@ def extract_strength_values(resp):
     return values
 
 
-def build_empty_chart_data():
-    return {
-        'months': ['بدون داده'],
-        'xbar_s': [None],
-        'xbar_r': [None],
-        'density': [None],
-        'strength': [None],
-    }
+def extract_thickness_value(resp):
+    if resp.thickness_result is not None:
+        return float(resp.thickness_result)
+    return None
 
 
-def build_chart_data_from_responses(responses):
-    """Aggregate monthly series for line/bar charts."""
-    from collections import defaultdict
+def get_response_sort_key(resp):
+    date_val = resp.response_date
+    if not date_val:
+        date_val = getattr(resp.experiment_request, 'request_date', None)
+    if not date_val and resp.created_at:
+        date_val = resp.created_at
+    return str(date_val or '')
 
-    monthly_data = defaultdict(lambda: {'density': [], 'strength': []})
 
+def _sorted_values(responses, extractor):
+    """Collect numeric values from responses, sorted chronologically."""
+    pairs = []
     for resp in responses:
-        month_key = get_response_month_key(resp)
-        if not month_key:
-            continue
+        if extractor is extract_strength_values:
+            for value in extract_strength_values(resp):
+                pairs.append((get_response_sort_key(resp), value))
+        else:
+            value = extractor(resp)
+            if value is not None:
+                pairs.append((get_response_sort_key(resp), value))
+    pairs.sort(key=lambda item: item[0])
+    return [value for _, value in pairs]
 
-        density = extract_density_value(resp)
-        if density is not None:
-            monthly_data[month_key]['density'].append(density)
 
-        strength_values = extract_strength_values(resp)
-        if strength_values:
-            monthly_data[month_key]['strength'].extend(strength_values)
-
-    chart_data = {
-        'months': [],
-        'xbar_s': [],
-        'xbar_r': [],
-        'density': [],
-        'strength': [],
+def build_empty_statistical_charts():
+    return {
+        'xbar_s': None,
+        'xbar_r': None,
+        'histogram': None,
+        'scatter': [],
+        'scatter_y_label': 'مقاومت',
     }
 
-    for month in sorted(monthly_data.keys()):
-        data = monthly_data[month]
-        chart_data['months'].append(month)
 
-        if data['density']:
-            avg_density = sum(data['density']) / len(data['density'])
-            chart_data['xbar_s'].append(round(avg_density, 3))
-            chart_data['density'].append(round(avg_density, 3))
-        else:
-            chart_data['xbar_s'].append(None)
-            chart_data['density'].append(None)
+def build_statistical_charts_from_responses(responses):
+    """Build SPC control charts, histogram, and scatter from filtered responses."""
+    from core.chart_stats import build_xbar_s_chart, build_xbar_r_chart, histogram_from_values
 
-        if data['strength']:
-            avg_strength = sum(data['strength']) / len(data['strength'])
-            chart_data['xbar_r'].append(round(avg_strength, 3))
-            chart_data['strength'].append(round(avg_strength, 3))
-        else:
-            chart_data['xbar_r'].append(None)
-            chart_data['strength'].append(None)
+    density_values = _sorted_values(responses, extract_density_value)
+    strength_values = _sorted_values(responses, extract_strength_values)
 
-    if not chart_data['months']:
-        return build_empty_chart_data()
+    scatter_points, scatter_y_label = build_scatter_points(responses)
 
-    return chart_data
+    return {
+        'xbar_s': build_xbar_s_chart(density_values),
+        'xbar_r': build_xbar_r_chart(strength_values),
+        'histogram': histogram_from_values(density_values) if density_values else None,
+        'scatter': scatter_points,
+        'scatter_y_label': scatter_y_label,
+    }
 
 
 def build_scatter_points(responses):
+    """Return scatter points and the Y-axis label (strength or thickness)."""
     points = []
+    y_label = 'مقاومت'
+    use_thickness = False
+
     for resp in responses:
         density = extract_density_value(resp)
-        strength_values = extract_strength_values(resp)
-        strength = strength_values[0] if strength_values else None
-        if density is None or strength is None:
+        if density is None:
             continue
+
+        strength_values = extract_strength_values(resp)
+        y_val = strength_values[0] if strength_values else None
+
+        if y_val is None:
+            y_val = extract_thickness_value(resp)
+            if y_val is not None:
+                use_thickness = True
+
+        if y_val is None:
+            continue
+
         try:
             points.append({
                 'project': resp.experiment_request.project.name,
                 'date': str(resp.response_date or resp.experiment_request.request_date or ''),
                 'density': density,
-                'strength': strength,
+                'y': y_val,
             })
         except (TypeError, ValueError, AttributeError):
             continue
-    return points
+
+    if use_thickness and not any(extract_strength_values(r) for r in responses):
+        y_label = 'ضخامت'
+
+    return points, y_label
