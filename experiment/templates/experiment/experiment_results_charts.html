@@ -6,17 +6,85 @@
 
 {% block head %}
 <style>
-  .chart-card .card-body { min-height: 320px; position: relative; }
-  .control-chart-stack { display: flex; flex-direction: column; gap: 0.5rem; }
-  .control-chart-subtitle { font-size: 0.8rem; color: #666; margin-bottom: 0.25rem; font-weight: 600; }
-  .control-chart-container { position: relative; width: 100%; height: 200px; }
-  .control-chart-container-lg { height: 280px; }
-  .chart-empty-msg { color: #888; text-align: center; padding: 2rem 1rem; font-size: 0.9rem; }
+  /* Override global .chart-card (align-items:center shrinks charts to tiny boxes) */
+  .experiment-results-charts .chart-card {
+    align-items: stretch !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .experiment-results-charts .chart-card .card-header,
+  .experiment-results-charts .chart-card .card-body {
+    width: 100%;
+  }
+
+  .experiment-results-charts .chart-card .card-body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 420px;
+    padding: 1rem;
+  }
+
+  .experiment-results-charts .chart-card .card-body.card-body-single {
+    min-height: 360px;
+  }
+
+  .experiment-results-charts .control-chart-stack {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 0;
+  }
+
+  .experiment-results-charts .control-chart-sub {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .experiment-results-charts .control-chart-subtitle {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .experiment-results-charts .control-chart-container {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    min-height: 160px;
+  }
+
+  .experiment-results-charts .control-chart-container canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+  }
+
+  .experiment-results-charts .chart-empty-msg {
+    color: #888;
+    text-align: center;
+    padding: 2rem 1rem;
+    font-size: 0.9rem;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 </style>
 {% endblock %}
 
 {% block main %}
-<div class="container mt-4">
+<div class="container mt-4 experiment-results-charts">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2>نتایج آزمایشات</h2>
@@ -129,9 +197,9 @@
                     <span>هیستوگرام — توزیع تراکم</span>
                     <small class="text-muted" id="histogramStats"></small>
                 </div>
-                <div class="card-body">
+                <div class="card-body card-body-single">
                     <div id="histogramEmpty" class="chart-empty-msg d-none">داده تراکم برای هیستوگرام وجود ندارد.</div>
-                    <div class="control-chart-container control-chart-container-lg">
+                    <div class="control-chart-container">
                         <canvas id="histogramChart"></canvas>
                     </div>
                 </div>
