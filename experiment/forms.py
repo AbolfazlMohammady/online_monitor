@@ -379,10 +379,18 @@ class MeetingMinutesForm(forms.ModelForm):
         label='تاریخ صورت جلسه',
         required=True
     )
-    minutes_number = forms.IntegerField(
+    minutes_number = forms.DecimalField(
         label='نتیجه صورت جلسه',
         min_value=0,
-        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        max_value=100,
+        required=True,
+        decimal_places=2,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'inputmode': 'decimal',
+            'placeholder': 'مثلاً 85',
+            'autocomplete': 'off',
+        }),
     )
     
     def __init__(self, *args, **kwargs):

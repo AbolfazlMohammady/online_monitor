@@ -23,6 +23,21 @@
       <h6 class="mb-0"><i class="bi bi-plus-circle me-2"></i>افزودن صورت جلسه</h6>
     </div>
     <div class="card-body p-4">
+      {% if form.errors %}
+        <div class="alert alert-danger rounded-3">
+          <strong>لطفاً خطاهای فرم را برطرف کنید:</strong>
+          <ul class="mb-0 mt-2">
+            {% for field in form %}
+              {% for error in field.errors %}
+                <li>{{ field.label }}: {{ error }}</li>
+              {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+              <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
       <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
         {% csrf_token %}
         <div class="row">
@@ -34,6 +49,7 @@
           <div class="col-md-4 mb-3">
             <label for="{{ form.minutes_number.id_for_label }}" class="form-label fw-bold">نتیجه صورت جلسه *</label>
             {{ form.minutes_number }}
+            <small class="text-muted d-block mt-1">عدد بین ۰ تا ۱۰۰ (درصد نتیجه)</small>
             {% for error in form.minutes_number.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
           </div>
           <div class="col-md-4 mb-3">
@@ -112,7 +128,7 @@
   </div>
 
   <!-- لیست ۱۰ تایی -->
-  <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+  <div class="card border-0 shadow-lg rounded-4 overflow-hidden" id="minutes-list">
     <div class="card-header bg-light">
       <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>آخرین صورت جلسات</h6>
     </div>
@@ -127,7 +143,6 @@
               <th>تاریخ صورت جلسه</th>
               <th>فایل</th>
               <th>توضیحات</th>
-              <th>تاریخ ثبت</th>
               <th>عملیات</th>
             </tr>
           </thead>
@@ -136,7 +151,7 @@
               <tr>
                 <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
                 <td><span class="badge bg-info text-dark">{{ minute.project.name }}</span></td>
-                <td><strong>{{ minute.minutes_number }}</strong></td>
+                <td><strong>{{ minute.minutes_number|floatformat:2 }}</strong></td>
                 <td>{{ minute.minutes_date }}</td>
                 <td>
                   {% if minute.minutes_file %}
@@ -154,7 +169,6 @@
                     <span class="text-muted">-</span>
                   {% endif %}
                 </td>
-                <td><small class="text-muted">{{ minute.created_at|date:"Y-m-d H:i" }}</small></td>
                 <td>
                   <div class="btn-group" role="group">
                     <a href="{% url 'experiment:meeting_minutes_update' minute.pk %}" class="btn btn-sm btn-outline-primary" title="ویرایش">
@@ -168,7 +182,7 @@
               </tr>
             {% empty %}
               <tr>
-                <td colspan="8" class="text-center text-muted py-4">
+                <td colspan="7" class="text-center text-muted py-4">
                   <i class="bi bi-inbox me-2"></i>هیچ صورت جلسه‌ای یافت نشد.
                 </td>
               </tr>
@@ -197,4 +211,15 @@
     </nav>
   {% endif %}
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.location.hash === '#minutes-list') {
+      const listEl = document.getElementById('minutes-list');
+      if (listEl) {
+        listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  });
+</script>
 {% endblock %}

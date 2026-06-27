@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ExperimentType, ExperimentSubType, ConcretePlace, ExperimentRequest, ExperimentRequestApproval, ExperimentResponse, ExperimentApproval, PaymentCoefficient, QualityCommission, ExperimentRequestKilometer, ExperimentRequestFile, AsphaltTest, AsphaltGradation, SieveSize
+from .models import ExperimentType, ExperimentSubType, ConcretePlace, ExperimentRequest, ExperimentRequestApproval, ExperimentResponse, ExperimentApproval, PaymentCoefficient, QualityCommission, MeetingMinutes, ExperimentRequestKilometer, ExperimentRequestFile, AsphaltTest, AsphaltGradation, SieveSize
 from .forms import AsphaltGradationForm
 from utils import baseAdminModel
 
@@ -95,6 +95,20 @@ class QualityCommissionAdmin(MyModelAdminMixin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('project')
+
+
+@admin.register(MeetingMinutes)
+class MeetingMinutesAdmin(MyModelAdminMixin):
+    list_display = ('project', 'minutes_number', 'minutes_date', 'has_file', 'created_at')
+    list_filter = ('project', 'minutes_date')
+    search_fields = ('project__name', 'description')
+    ordering = ('-minutes_date', '-id')
+    readonly_fields = ('created_at',)
+
+    def has_file(self, obj):
+        return bool(obj.minutes_file)
+    has_file.boolean = True
+    has_file.short_description = 'فایل'
 
 admin.site.register(ExperimentRequestKilometer)
 admin.site.register(ExperimentRequestFile)

@@ -39,6 +39,7 @@
               <div class="col-md-6 mb-3">
                 <label for="{{ form.minutes_number.id_for_label }}" class="form-label fw-bold">نتیجه صورت جلسه *</label>
                 {{ form.minutes_number }}
+                <small class="text-muted d-block mt-1">عدد بین ۰ تا ۱۰۰ (درصد نتیجه)</small>
                 {% for error in form.minutes_number.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
               </div>
             </div>

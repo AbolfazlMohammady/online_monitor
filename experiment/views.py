@@ -954,7 +954,11 @@ def meeting_minutes_list(request):
         if form.is_valid():
             form.save()
             messages.success(request, 'صورت جلسه با موفقیت ثبت شد.')
-            return redirect('experiment:meeting_minutes_list')
+            url = reverse('experiment:meeting_minutes_list')
+            params = request.GET.urlencode()
+            if params:
+                url = f'{url}?{params}'
+            return redirect(f'{url}#minutes-list')
 
     minutes = models.MeetingMinutes.objects.filter(project__in=accessible)
 
@@ -974,7 +978,7 @@ def meeting_minutes_list(request):
         if g_date:
             minutes = minutes.filter(minutes_date__lte=g_date)
 
-    minutes = minutes.order_by('-minutes_date', '-created_at')
+    minutes = minutes.order_by('-minutes_date', '-id')
     total_minutes = minutes.count()
 
     paginator = Paginator(minutes, 10)
