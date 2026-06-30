@@ -300,51 +300,54 @@
         chartInstances[canvasId] = new Chart(ctx, {
             type: 'line',
             data: { labels: labels, datasets: datasets },
-            options: baseChartOptions(yTitle, isSkeleton ? 'شماره زیرگروه' : 'شماره زیرگروه')
+            options: baseChartOptions(yTitle, isSkeleton ? 'شماره اندازه‌گیری' : 'شماره اندازه‌گیری')
         });
     }
 
-    function createMonthlyBarChart(canvasId, histogramData, isSkeleton) {
+    function createHistogramChart(canvasId, histogramData, primaryLabel, isSkeleton) {
         destroyChart(canvasId);
         const ctx = document.getElementById(canvasId);
         if (!ctx) return;
 
-        const labels = isSkeleton ? SKELETON_LABELS : histogramData.months;
+        const labels = isSkeleton ? SKELETON_LABELS : histogramData.labels;
         const datasets = [];
 
         if (isSkeleton) {
             datasets.push({
-                label: 'میانگین',
+                label: 'فراوانی',
                 data: labels.map(function() { return null; }),
                 backgroundColor: 'rgba(200,200,200,0.25)',
                 borderColor: 'rgba(200,200,200,0.5)',
                 borderWidth: 1
             });
         } else {
-            datasets.push({
-                label: histogramData.primary_label || 'میانگین',
-                data: histogramData.primary,
-                backgroundColor: 'rgba(54,162,235,0.65)',
-                borderColor: 'rgba(54,162,235,1)',
-                borderWidth: 1,
-                skipNull: true
-            });
-            if (histogramData.secondary) {
-                datasets.push({
-                    label: histogramData.secondary_label || 'میانگین ۲',
-                    data: histogramData.secondary,
-                    backgroundColor: 'rgba(75,192,192,0.65)',
-                    borderColor: 'rgba(75,192,192,1)',
+            datasets.push(
+                {
+                    label: 'فراوانی',
+                    data: histogramData.counts,
+                    backgroundColor: 'rgba(25, 118, 210, 0.55)',
+                    borderColor: 'rgba(25, 118, 210, 0.85)',
                     borderWidth: 1,
-                    skipNull: true
-                });
-            }
+                    order: 2
+                },
+                {
+                    label: 'توزیع نرمال',
+                    type: 'line',
+                    data: histogramData.normal_curve,
+                    borderColor: 'rgba(211, 47, 47, 0.95)',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2.5,
+                    pointRadius: 0,
+                    tension: 0.4,
+                    order: 1
+                }
+            );
         }
 
         chartInstances[canvasId] = new Chart(ctx, {
             type: 'bar',
             data: { labels: labels, datasets: datasets },
-            options: baseChartOptions('مقدار', isSkeleton ? 'ماه' : 'ماه')
+            options: baseChartOptions('تعداد', isSkeleton ? 'بازه' : ('بازه ' + (primaryLabel || 'مقدار')))
         });
     }
 
@@ -388,7 +391,7 @@
         const secondary = statisticalCharts.secondary_label || primary;
         document.getElementById('xbarSTitle').textContent = 'Control Xbar-S — ' + primary;
         document.getElementById('xbarRTitle').textContent = 'Control Xbar-R — ' + primary;
-        document.getElementById('histogramTitle').textContent = 'هیستوگرام — میانگین ماهانه';
+        document.getElementById('histogramTitle').textContent = 'هیستوگرام — ' + primary;
         document.getElementById('scatterTitle').textContent = 'نمودار پراکندگی — ' + primary + ' / ' + secondary;
     }
 
@@ -433,9 +436,10 @@
 
         if (hasData && statisticalCharts.histogram) {
             hideNotes();
-            createMonthlyBarChart('histogramChart', statisticalCharts.histogram, false);
+            document.getElementById('histogramStats').textContent = formatStats(statisticalCharts.histogram.stats);
+            createHistogramChart('histogramChart', statisticalCharts.histogram, primaryLabel, false);
         } else {
-            createMonthlyBarChart('histogramChart', null, true);
+            createHistogramChart('histogramChart', null, primaryLabel, true);
         }
 
         if (hasData && statisticalCharts.scatter && statisticalCharts.scatter.length) {

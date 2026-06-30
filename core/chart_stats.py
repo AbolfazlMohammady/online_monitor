@@ -79,6 +79,105 @@ def _xbar_r_from_values(values):
     return build_xbar_r_chart(values)
 
 
+def build_individual_xbar_r_chart(values):
+    """
+    I-MR style control chart: one point per measurement (no subgroup batching).
+  """
+    values = _to_float_list(values)
+    if not values:
+        return None
+
+    labels = [str(index + 1) for index in range(len(values))]
+    grand_mean = mean(values)
+    stdev = pstdev(values) if len(values) > 1 else 0
+
+    moving_ranges = [0.0]
+    for index in range(1, len(values)):
+        moving_ranges.append(abs(values[index] - values[index - 1]))
+    mr_bar = mean(moving_ranges[1:]) if len(moving_ranges) > 1 else 0
+
+    if len(values) > 1:
+        ucl_i = grand_mean + 2.66 * mr_bar
+        lcl_i = max(0, grand_mean - 2.66 * mr_bar)
+        ucl_mr = 3.267 * mr_bar
+    else:
+        ucl_i = grand_mean + 3 * stdev
+        lcl_i = max(0, grand_mean - 3 * stdev)
+        ucl_mr = 0
+
+    return {
+        'labels': labels,
+        'xbar': [round(value, 4) for value in values],
+        'r': [round(value, 4) for value in moving_ranges],
+        'xbar_limits': {
+            'ucl': round(ucl_i, 4),
+            'cl': round(grand_mean, 4),
+            'lcl': round(lcl_i, 4),
+        },
+        'r_limits': {
+            'ucl': round(ucl_mr, 4),
+            'cl': round(mr_bar, 4),
+            'lcl': 0,
+        },
+        'stats': {
+            'mean': round(grand_mean, 4),
+            'stdev': round(stdev, 4),
+            'n': len(values),
+        },
+    }
+
+
+def build_individual_xbar_s_chart(values):
+    """
+    Individual-values chart with moving-range based variation (I-MR style).
+    """
+    values = _to_float_list(values)
+    if not values:
+        return None
+
+    d2 = 1.128
+    labels = [str(index + 1) for index in range(len(values))]
+    grand_mean = mean(values)
+    stdev = pstdev(values) if len(values) > 1 else 0
+
+    moving_ranges = [0.0]
+    for index in range(1, len(values)):
+        moving_ranges.append(abs(values[index] - values[index - 1]))
+    mr_bar = mean(moving_ranges[1:]) if len(moving_ranges) > 1 else 0
+    s_estimates = [round(mr / d2, 4) if mr > 0 else 0 for mr in moving_ranges]
+    s_bar = mean(s_estimates[1:]) if len(s_estimates) > 1 else 0
+
+    if len(values) > 1:
+        ucl_i = grand_mean + 2.66 * mr_bar
+        lcl_i = max(0, grand_mean - 2.66 * mr_bar)
+        ucl_s = 3.267 * s_bar
+    else:
+        ucl_i = grand_mean + 3 * stdev
+        lcl_i = max(0, grand_mean - 3 * stdev)
+        ucl_s = 0
+
+    return {
+        'labels': labels,
+        'xbar': [round(value, 4) for value in values],
+        's': s_estimates,
+        'xbar_limits': {
+            'ucl': round(ucl_i, 4),
+            'cl': round(grand_mean, 4),
+            'lcl': round(lcl_i, 4),
+        },
+        's_limits': {
+            'ucl': round(ucl_s, 4),
+            'cl': round(s_bar, 4),
+            'lcl': 0,
+        },
+        'stats': {
+            'mean': round(grand_mean, 4),
+            'stdev': round(stdev, 4),
+            'n': len(values),
+        },
+    }
+
+
 def build_xbar_s_chart(values):
     """Build Xbar-S control chart payload from a flat list of numeric values."""
     values = _to_float_list(values)

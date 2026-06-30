@@ -1,7 +1,5 @@
 """Helpers for experiment results charts: layer filters and chart aggregation."""
 
-from collections import defaultdict
-
 from django.db.models import Q
 
 EXPERIMENT_RESULT_LAYERS = [
@@ -38,9 +36,12 @@ EXPERIMENT_RESULT_LAYERS = [
     },
 ]
 
-METRIC_FIELDS = (
+CHART_METRIC_FIELDS = (
     ('density', 'تراکم', 'density_result'),
     ('strength', 'مقاومت فشاری', None),
+)
+
+SCATTER_METRIC_FIELDS = CHART_METRIC_FIELDS + (
     ('thickness', 'ضخامت', 'thickness_result'),
 )
 
@@ -168,25 +169,29 @@ def _sorted_values(responses, metric_key):
     return [value for _, value in pairs]
 
 
-def _metric_label(metric_key):
-    for key, label, _field in METRIC_FIELDS:
+def _metric_label(metric_key, fields=CHART_METRIC_FIELDS):
+    for key, label, _field in fields:
         if key == metric_key:
             return label
     return 'مقدار'
 
 
-def resolve_layer_metrics(responses):
-    """
-    Pick primary/secondary metrics from whatever test results exist
-    in the filtered responses (not hardcoded per layer type).
-    """
+def _metric_counts(responses, fields):
     counts = {}
-    for key, _label, _field in METRIC_FIELDS:
+    for key, _label, _field in fields:
         total = 0
         for resp in responses:
             total += len(_metric_values_list(resp, key))
         counts[key] = total
+    return counts
 
+
+def resolve_layer_metrics(responses):
+    """
+    Pick primary metric for control/histogram charts (density or strength only).
+    Secondary metric is used only for scatter when both exist.
+    """
+    counts = _metric_counts(responses, CHART_METRIC_FIELDS)
     available = [(key, count) for key, count in counts.items() if count > 0]
     if not available:
         return None, None
@@ -209,50 +214,6 @@ def build_empty_statistical_charts():
         'scatter_x_label': 'محور X',
         'scatter_y_label': 'محور Y',
     }
-
-
-def build_monthly_bar_chart(responses, primary_key, secondary_key=None):
-    """Monthly averages for bar/histogram-style chart."""
-    monthly = defaultdict(lambda: defaultdict(list))
-
-    for resp in responses:
-        month_key = get_response_month_key(resp)
-        if not month_key:
-            continue
-        for value in _metric_values_list(resp, primary_key):
-            monthly[month_key][primary_key].append(value)
-        if secondary_key:
-            for value in _metric_values_list(resp, secondary_key):
-                monthly[month_key][secondary_key].append(value)
-
-    if not monthly:
-        return None
-
-    months = sorted(monthly.keys())
-    primary_series = []
-    secondary_series = []
-
-    for month in months:
-        bucket = monthly[month]
-        p_vals = bucket.get(primary_key, [])
-        primary_series.append(
-            round(sum(p_vals) / len(p_vals), 3) if p_vals else None
-        )
-        if secondary_key:
-            s_vals = bucket.get(secondary_key, [])
-            secondary_series.append(
-                round(sum(s_vals) / len(s_vals), 3) if s_vals else None
-            )
-
-    result = {
-        'months': months,
-        'primary': primary_series,
-        'primary_label': _metric_label(primary_key),
-    }
-    if secondary_key:
-        result['secondary'] = secondary_series
-        result['secondary_label'] = _metric_label(secondary_key)
-    return result
 
 
 def build_scatter_points(responses, primary_key, secondary_key):
@@ -286,10 +247,13 @@ def build_scatter_points(responses, primary_key, secondary_key):
 def build_statistical_charts_from_responses(responses):
     """
     Build all four charts from filtered layer responses.
-    Primary metric drives Xbar-S, Xbar-R, and histogram;
-    scatter uses primary vs secondary metric available in data.
+    Each measurement is one point on control charts; histogram uses primary metric only.
     """
-    from core.chart_stats import build_xbar_s_chart, build_xbar_r_chart
+    from core.chart_stats import (
+        build_individual_xbar_s_chart,
+        build_individual_xbar_r_chart,
+        histogram_from_values,
+    )
 
     primary_key, secondary_key = resolve_layer_metrics(responses)
     if not primary_key:
@@ -303,13 +267,19 @@ def build_statistical_charts_from_responses(responses):
         responses, primary_key, secondary_key
     )
 
+    hist_bins = min(8, max(3, len(primary_values))) if primary_values else 8
+    histogram = (
+        histogram_from_values(primary_values, bins=hist_bins)
+        if primary_values else None
+    )
+
     return {
         'has_data': bool(primary_values),
         'primary_label': primary_label,
         'secondary_label': secondary_label,
-        'xbar_s': build_xbar_s_chart(primary_values),
-        'xbar_r': build_xbar_r_chart(primary_values),
-        'histogram': build_monthly_bar_chart(responses, primary_key, secondary_key),
+        'xbar_s': build_individual_xbar_s_chart(primary_values),
+        'xbar_r': build_individual_xbar_r_chart(primary_values),
+        'histogram': histogram,
         'scatter': scatter_points,
         'scatter_x_label': scatter_x_label,
         'scatter_y_label': scatter_y_label,
