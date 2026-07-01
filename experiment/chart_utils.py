@@ -189,17 +189,25 @@ def _metric_counts(responses, fields):
 def resolve_layer_metrics(responses):
     """
     Pick primary metric for control/histogram charts (density or strength only).
-    Secondary metric is used only for scatter when both exist.
     """
     counts = _metric_counts(responses, CHART_METRIC_FIELDS)
     available = [(key, count) for key, count in counts.items() if count > 0]
     if not available:
+        return None
+
+    available.sort(key=lambda item: (-item[1], item[0]))
+    return available[0][0]
+
+
+def resolve_scatter_metrics(responses):
+    """Pick X/Y metrics for scatter (density, strength, or thickness)."""
+    counts = _metric_counts(responses, SCATTER_METRIC_FIELDS)
+    available = [(key, count) for key, count in counts.items() if count > 0]
+    if len(available) < 2:
         return None, None
 
     available.sort(key=lambda item: (-item[1], item[0]))
-    primary_key = available[0][0]
-    secondary_key = available[1][0] if len(available) > 1 else None
-    return primary_key, secondary_key
+    return available[0][0], available[1][0]
 
 
 def build_empty_statistical_charts():
@@ -241,7 +249,7 @@ def build_scatter_points(responses, primary_key, secondary_key):
             'y': y_val,
         })
 
-    return points, _metric_label(primary_key), _metric_label(secondary_key)
+    return points, _metric_label(primary_key, SCATTER_METRIC_FIELDS), _metric_label(secondary_key, SCATTER_METRIC_FIELDS)
 
 
 def build_statistical_charts_from_responses(responses):
@@ -255,17 +263,18 @@ def build_statistical_charts_from_responses(responses):
         histogram_from_values,
     )
 
-    primary_key, secondary_key = resolve_layer_metrics(responses)
+    primary_key = resolve_layer_metrics(responses)
     if not primary_key:
         return build_empty_statistical_charts()
 
     primary_label = _metric_label(primary_key)
-    secondary_label = _metric_label(secondary_key) if secondary_key else primary_label
     primary_values = _sorted_values(responses, primary_key)
 
+    scatter_x_key, scatter_y_key = resolve_scatter_metrics(responses)
     scatter_points, scatter_x_label, scatter_y_label = build_scatter_points(
-        responses, primary_key, secondary_key
+        responses, scatter_x_key, scatter_y_key
     )
+    scatter_secondary_label = _metric_label(scatter_y_key, SCATTER_METRIC_FIELDS) if scatter_y_key else primary_label
 
     hist_bins = min(8, max(3, len(primary_values))) if primary_values else 8
     histogram = (
@@ -276,7 +285,7 @@ def build_statistical_charts_from_responses(responses):
     return {
         'has_data': bool(primary_values),
         'primary_label': primary_label,
-        'secondary_label': secondary_label,
+        'secondary_label': scatter_secondary_label,
         'xbar_s': build_individual_xbar_s_chart(primary_values),
         'xbar_r': build_individual_xbar_r_chart(primary_values),
         'histogram': histogram,
